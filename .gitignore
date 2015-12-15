@@ -1,5 +1,12 @@
-# CCS Project File
+# CCS Project Files
 *.pjt
+*.lst
+*.STA
+*.sym
+*.cof
+*.err
+*.esym
+*.tre
 
 # Object files
 *.o
