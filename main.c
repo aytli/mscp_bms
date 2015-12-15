@@ -89,7 +89,7 @@
                        // - CHST = 000, 748us conversion time
 
 // LTC6804 configuration bytes (bytes 4 and 5 used for charging/discharging)
-#define CFGR0   0x0C   // VREFON = 1, ADCOPT = 0
+#define CFGR0   0x08   // VREFON = 1, ADCOPT = 0
 #define CFGR1   0xD6   // Undervoltage = 2.80V (0x6D6)
 #define CFGR2   0x06   // Overvoltage lower nibble + undervoltage upper nibble
 #define CFGR3   0xA4   // Overvoltage  = 4.20V (0xA40)
@@ -114,8 +114,8 @@
 #define N_CELLS    4  // Number of cells actually connected
 
 // Charge and discharge time
-#define CHARGE_MS    5
-#define DISCHARGE_MS 5
+#define CHARGE_MS    1
+#define DISCHARGE_MS 1
 
 // CRC polynomial
 #define CRC15_POLY   0x4599
@@ -131,13 +131,47 @@ typedef struct
 } cell_t;
 
 static cell_t g_cell[N_CHANNELS];
-static int16  g_discharge_cell_mask;
-static int16  g_charge_cell_mask;
 static int1   gb_ready_to_balance;
 static int    g_highest_voltage_cell_index;
 static int    g_lowest_voltage_cell_index;
 
 unsigned int16 pec15Table[256];
+
+void init_PEC15_Table(void)
+{
+    int i;
+    int bit;
+    unsigned int16 remainder;
+    for (i = 0; i < 256; i++)
+    {
+        remainder = i << 7;
+        for (bit = 8; bit > 0; --bit)
+        {
+            if (remainder & 0x4000)
+            {
+                remainder = ((remainder << 1));
+                remainder = (remainder ^ CRC15_POLY);
+            }
+            else
+            {
+                remainder = ((remainder << 1));
+            }
+        }
+        pec15Table[i] = remainder & 0xFFFF;
+    }
+}
+
+unsigned int16 pec15(char *data , int len)
+{
+    unsigned int16 remainder, address;
+    remainder = 16;
+    int i;
+    for (i = 0; i < len; i++) {
+        address = ((remainder >> 7) ^ data[i]) & 0xff;
+        remainder = (remainder << 8 ) ^ pec15Table[address];
+    }
+    return (remainder * 2);
+}
 
 // Initializes the cells, clears all flags, resets highest and lowest cells
 void init_cells(void)
@@ -158,10 +192,18 @@ void init_cells(void)
 }
 
 // Sends an 11 bit (2 bytes) command to LTC-1
-void ltc6804_send_command(int16 command)
+void ltc6804_send_command(unsigned int16 command)
 {
+    char bytes[2];
+    unsigned int16 crc;
+    bytes[0] = (command&(0xFF00))>>8;
+    bytes[1] = command&(0x00FF);
+    crc = pec15(bytes,2);
+    
     spi_write((command&(0xFF00))>>8);
     spi_write(command&(0x00FF));
+    spi_write((crc&0xFF00)>>8);
+    spi_write(crc&0x00FF);
 }
 
 // Sends an 11 bit (2 bytes) command to LTC-2
@@ -174,13 +216,25 @@ void ltc6804_send_command2(int16 command)
 // Sends two bytes of config data to LTC-1
 void ltc6804_send_config(int16 data)
 {
+    char bytes[6];
+    unsigned int16 crc;
+    bytes[0] = CFGR0;
+    bytes[1] = CFGR1;
+    bytes[2] = CFGR2;
+    bytes[3] = CFGR3;
+    bytes[4] = data&0x00FF;
+    bytes[5] = (data&0xFF00)>>8;
+    crc = pec15(bytes,6);
+
     ltc6804_send_command(WRCFG);
     spi_write(CFGR0);
     spi_write(CFGR1);
     spi_write(CFGR2);
     spi_write(CFGR3);
-    spi_write((data&0xFF00)>>8);
     spi_write(data&0x00FF);
+    spi_write((data&0xFF00)>>8);
+    spi_write((crc&0xFF00)>>8);
+    spi_write(crc&0x00FF);
 }
 
 // Sends two bytes of config data to LTC-2
@@ -330,94 +384,6 @@ void isr_timer2(void)
     CLEAR_T2_FLAG;
 }
 
-// Write discharge bits, start discharge timer
-void start_discharge(void)
-{
-    gb_ready_to_balance = false;
-    
-    // Pull CSBI low
-    output_low(CSBI1);
-    output_low(CSBI2);
-    
-    ltc6804_send_config (g_discharge_cell_mask);
-    ltc6804_send_config2(g_discharge_cell_mask);
-    
-    // Pull CSBI high to start discharging
-    output_high(CSBI1);
-    output_high(CSBI2);
-    
-    // Pull CSBI low
-    output_low(CSBI1);
-    output_low(CSBI2);
-    
-    // Write charge bits
-    ltc6804_send_config (g_charge_cell_mask);
-    ltc6804_send_config2(g_charge_cell_mask);
-    
-    // Enable discharge timer
-    clear_interrupt(INT_TIMER3);
-    setup_timer3(TMR_INTERNAL|TMR_DIV_BY_8,1250*DISCHARGE_MS);
-    enable_interrupts(INT_TIMER3);
-}
-
-// Timer 3 is the discharge timer, stops discharge cycle, starts charge cycle
-#int_timer3 level = 5
-void isr_timer3(void)
-{
-    // Pull CSBI high to start charging
-    output_high(CSBI1);
-    output_high(CSBI2);
-    
-    // Pull CSBI low
-    output_low(CSBI1);
-    output_low(CSBI2);
-    
-    // Clear charge bits
-    spi_write((WRCFG&(0xF0))>>8);
-    spi_write(WRCFG&(0x0F));
-    spi_write(CFGR0);
-    spi_write(CFGR1);
-    spi_write(CFGR2);
-    spi_write(CFGR3);
-    spi_write(0x00);
-    spi_write(0x00);
-    
-    spi_write2((WRCFG&(0xF0))>>8);
-    spi_write2(WRCFG&(0x0F));
-    spi_write2(CFGR0);
-    spi_write2(CFGR1);
-    spi_write2(CFGR2);
-    spi_write2(CFGR3);
-    spi_write2(0x00);
-    spi_write2(0x00);
-    
-    // Disable discharge timer
-    disable_interrupts(INT_TIMER3);
-    DISABLE_T3;
-    CLEAR_T3_FLAG;
-    
-    // Enable charge timer
-    clear_interrupt(INT_TIMER4);
-    setup_timer4(TMR_INTERNAL|TMR_DIV_BY_8,1250*CHARGE_MS);
-    enable_interrupts(INT_TIMER4);
-}
-
-// Timer 4 is the charge timer, stop charge cycle
-#int_timer4 level = 5
-void isr_timer4(void)
-{
-    // Pull CSBI high to stop charging
-    output_high(CSBI1);
-    output_high(CSBI2);
-    
-    gb_ready_to_balance = true;
-    
-    // Disable charge timer
-    disable_interrupts(INT_TIMER4);
-    DISABLE_T4;
-    CLEAR_T4_FLAG;
-}
-
 /*int16 calculate_pec(int64 data, int n_bytes)
 {
     int1 PEC[15] = {0,0,0,0,1,0,0,0,0,0,0,0,0,0,0};
@@ -459,128 +425,192 @@ void isr_timer4(void)
            (PEC[2]*BIT3)  |(PEC[1]*BIT2)  |(PEC[0]*BIT1);
 }*/
 
-void init_PEC15_Table()
+void LTC_wakeup()
 {
-    int i;
-    int bit;
-    unsigned int16 remainder;
-    for (i = 0; i < 256; i++)
-    {
-        remainder = i << 7;
-        for (bit = 8; bit > 0; --bit)
-        {
-            if (remainder & 0x4000)
-            {
-                remainder = ((remainder << 1));
-                remainder = (remainder ^ CRC15_POLY);
-            }
-            else
-            {
-                remainder = ((remainder << 1));
-            }
-        }
-        pec15Table[i] = remainder & 0xFFFF;
-    }
+    //Wake up serial interface
+    output_low(CSBI1);
+    delay_us(2);
+    output_high(CSBI1);
+    delay_us(14);
+    output_low(CSBI1);
 }
 
-unsigned int16 pec15(char *data , int len)
+void LTC_refon_set()
 {
-    unsigned int16 remainder, address;
-    remainder = 16;
-    int i;
-    for (i = 0; i < len; i++) {
-        address = ((remainder >> 7) ^ data[i]) & 0xff;
-        remainder = (remainder << 8 ) ^ pec15Table[address];
-    }
-    return (remainder * 2);
+    spi_write(0x80);
+    spi_write(0x01);
+    spi_write(0x4D);
+    spi_write(0x7A);
+    delay_us(2);
+    
+    spi_write(0xE5);
+    spi_write(0xE2);
+    spi_write(0x44);
+    spi_write(0x9C);
+    delay_us(2);
+    spi_write(0xFF);
+    spi_write(0xFF);
+    
+    // Calculate PEC
+    //unsigned int16 byte_CRC16[6] = {0xE5, 0x15, 0x57, 0x98, 0x00, 0x00};
+    //unsigned int16 PEC_A = (LTC_pec_calc(byte_CRC16, 6)) & 0xFF00;
+    //unsigned int16 PEC_B = (LTC_pec_calc(byte_CRC16, 6)) & 0x00FF;
+    //printf("%x", PEC_A);
+    //printf("%x", PEC_A);
+    
+    //spi_write(PEC_A);
+    //spi_write(PEC_B);
+    
+    spi_write(0xF1);
+    spi_write(0x66);
+    
+    
+    //time delay for ADC to warm up and turn on.
+    delay_us(100);
+    output_high(CSBI1);
+    delay_us(3900);
+    //Can immediately run next function here with LTC wake up.
+}
+
+void LTC_ADC_clear()
+{
+    spi_write(0x87);
+    spi_write(0x11);
+    spi_write(0xB9);
+    spi_write(0xD4);
+    
+    delay_us(20);
+}
+
+void LTC_ADC_conversion()
+{
+    spi_write(0x83);
+    spi_write(0x70);
+    spi_write(0xDF);
+    spi_write(0x56);
+    
+    delay_us(20);
+    output_high(CSBI1);
+    delay_us(6000);
+}
+
+void LTC_read_voltages_123()
+{
+    spi_write(0x80);
+    spi_write(0x04);
+    spi_write(0x77);
+    spi_write(0xD6);
+    
+    spi_write(0xFF);
+    spi_write(0xFF);
+    delay_us(2);
+    spi_write(0xFF);
+    spi_write(0xFF);
+    spi_write(0xFF);
+    spi_write(0xFF);
+    delay_us(2);
+    spi_write(0xFF);
+    spi_write(0xFF);
+    
+    delay_us(20);
+}
+
+// Write discharge bits, start discharge timer
+void start_discharge(int16 discharge, int16 charge)
+{
+    gb_ready_to_balance = false;
+    LTC_wakeup();
+    
+    // Pull CSBI low, write discharge bits, pull CSBI high to start discharging
+    output_low(CSBI1);
+    ltc6804_send_config(discharge);
+    output_high(CSBI1);
+    
+    // Pull CSBI low, write charge bits
+    output_low(CSBI1);
+    ltc6804_send_config(charge);
+    
+    // Enable discharge timer
+    clear_interrupt(INT_TIMER3);
+    setup_timer3(TMR_INTERNAL|TMR_DIV_BY_8,1250*DISCHARGE_MS);
+    enable_interrupts(INT_TIMER3);
+}
+
+// Timer 3 is the discharge timer, stops discharge cycle, starts charge cycle
+#int_timer3 level = 5
+void isr_timer3(void)
+{
+    // Pull CSBI high to start charging
+    output_high(CSBI1);
+    
+    // Pull CSBI low, write stop bits
+    output_low(CSBI1);
+    ltc6804_send_config(0x00);
+    
+    // Disable discharge timer
+    disable_interrupts(INT_TIMER3);
+    DISABLE_T3;
+    CLEAR_T3_FLAG;
+    
+    // Enable charge timer
+    clear_interrupt(INT_TIMER4);
+    setup_timer4(TMR_INTERNAL|TMR_DIV_BY_8,1250*CHARGE_MS);
+    enable_interrupts(INT_TIMER4);
+}
+
+// Timer 4 is the charge timer, stop charge cycle
+#int_timer4 level = 5
+void isr_timer4(void)
+{
+    // Pull CSBI high to stop charging
+    output_high(CSBI1);
+    
+    gb_ready_to_balance = true;
+    
+    // Disable charge timer
+    disable_interrupts(INT_TIMER4);
+    DISABLE_T4;
+    CLEAR_T4_FLAG;
 }
 
 // Main
 void main()
 {
-    int data;
-    int i;
+    char bytes[6];
+    unsigned int16 crc = 0x0000;
     
     // Set up and enable timer 2 to interrupt every 1ms using 20MHz clock
     setup_timer2(TMR_INTERNAL|TMR_DIV_BY_256,39);
     enable_interrupts(INT_TIMER2);
 
     // Set up two SPI ports
-    setup_spi (SPI_MASTER|SPI_SCK_IDLE_HIGH|SPI_XMIT_L_TO_H|SPI_CLK_DIV_12);
+    setup_spi(SPI_MASTER|SPI_SCK_IDLE_HIGH|SPI_CLK_DIV_2|SPI_CLK_DIV_5|SPI_XMIT_L_TO_H);
+    
+    init_PEC15_Table();
+    
+    output_high(CSBI1);
+    DELAY_US(1000000);
+    LTC_wakeup();
+    
+    // Send ADCV Command
+    LTC_wakeup();
     
     output_low(CSBI1);
-    delay_us(1);
-    output_high(CSBI1);
-    delay_us(10);
-    output_low(CSBI1);
-    spi_write(0x80);
-    spi_write(0x01);
-    spi_write(0x4D);
-    spi_write(0x7A);
-    spi_write(0xE5);
-    spi_write(0xE2);
-    spi_write(0x44);
-    spi_write(0x9C);
-    spi_write(0x00);
-    spi_write(0x00);
-    spi_write(0xF1);
-    spi_write(0x66);
+    spi_write(0x03);
+    spi_write(0x60);
+    spi_write(0xF4);
+    spi_write(0x64);
     output_high(CSBI1);
     
-    delay_ms(5);
-    
-    output_low(CSBI1);
-    delay_us(1);
-    output_high(CSBI1);
-    delay_us(10);
-    output_low(CSBI1);
-    spi_write(0x87);
-    spi_write(0x11);
-    spi_write(0xB9);
-    spi_write(0xD4);
-    output_high(CSBI1);
-    
-    delay_ms(2);
-
-    output_low(CSBI1);
-    delay_us(1);
-    output_high(CSBI1);
-    delay_us(10);
-    output_low(CSBI1);
-    spi_write(0x83);
-    spi_write(0x70);
-    spi_write(0xDF);
-    spi_write(0x56);
-    output_high(CSBI1);
-    
-    delay_ms(3);
-    
-    output_low(CSBI1);
-    delay_us(1);
-    output_high(CSBI1);
-    delay_us(10);
-    output_low(CSBI1);
-    spi_write(0x80);
-    spi_write(0x04);
-    spi_write(0x77);
-    spi_write(0xD5);
-    spi_read(0x00);
-    spi_read(0x00);
-    spi_read(0x00);
-    spi_read(0x00);
-    spi_read(0x00);
-    spi_read(0x00);
-    spi_read(0x00);
-    spi_read(0x00);
-    output_high(CSBI1);
-    
-    while(true)
+    while (true)
     {
-        if (ms >= 200)
-        {
-            ms = 0;
-            output_toggle(HEARTBEAT_LED);
-        }
+        start_discharge(BIT0, BIT1);
+        delay_ms(5);
+        start_discharge(BIT1, BIT2);
+        delay_ms(5);
+        start_discharge(BIT2, BIT3);
+        delay_ms(5);
+        start_discharge(BIT3, BIT0);        
+        delay_ms(5);
     }
 }
-
