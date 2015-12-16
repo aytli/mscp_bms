@@ -1,6 +1,10 @@
-#include "pec.h"
+#ifndef PEC_C
+#define PEC_C
 
-unsigned int16 pec15Table[256];
+// CRC polynomial
+#define CRC15_POLY 0x4599
+
+static unsigned int16 pec15Table[256];
 
 void init_PEC15_Table(void)
 {
@@ -37,3 +41,5 @@ unsigned int16 pec15(char *data , int len)
     }
     return (remainder * 2);
 }
+
+#endif

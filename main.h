@@ -4,5 +4,8 @@
 #FUSES WPOSTS1                   //Watch Dog Timer PostScalar 1:1
 #FUSES CKSFSM                    //Clock Switching is enabled, fail Safe clock monitor is enabled
 
-#use delay(clock=20000000)
+// Use internal oscillator for delay
+#use delay(internal = 20000000)
 
+// UART port (PIC24HJ128GP502)
+#use rs232(baud = 9600, xmit = PIN_B8, rcv = PIN_B9)
