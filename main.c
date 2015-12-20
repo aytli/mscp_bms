@@ -46,7 +46,11 @@
 #define CLEAR_T4_FLAG IFS1  &= 0xF7FF
 
 // Miscellaneous pins
-#define HEARTBEAT_LED PIN_B5 // Hearbeat and diagnostic LED
+#define HEARTBEAT_LED1 PIN_A4 // Hearbeat and diagnostic LED
+#define HEARTBEAT_LED2 PIN_B5 // Hearbeat and diagnostic LED
+#define BALANCE_PIN    PIN_B6 // Balancing button
+#define UNBALANCE_PIN  PIN_B7 // Unbalancing button
+
 
 // Setup SPI ports (PIC24HJ128GP502)
 #pin_select SDI1    = PIN_B0 // MISO
@@ -60,8 +64,8 @@
 #pin_select SS2OUT  = CSBI2
 
 // Charge and discharge time
-#define CHARGE_MS    1
-#define DISCHARGE_MS 1
+#define CHARGE_MS    2
+#define DISCHARGE_MS 2
 
 static cell_t g_cell[N_CHANNELS];
 static int1   gb_ready_to_balance;
@@ -81,6 +85,26 @@ void init_cells(void)
         g_cell[i].uv_flag = 0;
         g_cell[i].ot_flag = 0;
     }
+    
+    g_cell[0].discharge1 = 0x00;
+    g_cell[0].discharge2 = 0x00;
+    g_cell[0].charge1 = 0x00;
+    g_cell[0].charge2 = 0x00;
+    
+    g_cell[1].discharge1 = 0x02;
+    g_cell[1].discharge2 = 0x01;
+    g_cell[1].charge1 = 0x01;
+    g_cell[1].charge2 = 0x02;
+    
+    g_cell[2].discharge1 = 0x04;
+    g_cell[2].discharge2 = 0x02;
+    g_cell[2].charge1 = 0x02;
+    g_cell[2].charge2 = 0x04;
+    
+    g_cell[3].discharge1 = 0x08;
+    g_cell[3].discharge2 = 0x04;
+    g_cell[3].charge1 = 0x04;
+    g_cell[3].charge2 = 0x08;
     
     g_highest_voltage_cell_index = 0;
     g_lowest_voltage_cell_index = 0;
@@ -107,19 +131,25 @@ int get_lowest_voltage_cell_index(void)
 }
 
 // Write discharge bits, start discharge timer
-void start_discharge(int16 discharge, int16 charge)
+void start_balance(cell_t discharge, cell_t charge)
 {
     gb_ready_to_balance = false;
     ltc6804_wakeup();
+    ltc6804_wakeup2();
     
     // Pull CSBI low, write discharge bits, pull CSBI high to start discharging
     output_low(CSBI1);
-    ltc6804_write_config(discharge);
+    output_low(CSBI2);
+    ltc6804_write_config(discharge.discharge1);
+    ltc6804_write_config2(discharge.discharge2);
     output_high(CSBI1);
+    output_high(CSBI2);
     
     // Pull CSBI low, write charge bits
     output_low(CSBI1);
-    ltc6804_write_config(charge);
+    output_low(CSBI2);
+    ltc6804_write_config(charge.charge1);
+    ltc6804_write_config2(charge.charge2);
     
     // Enable discharge timer
     clear_interrupt(INT_TIMER3);
@@ -133,10 +163,13 @@ void isr_timer3(void)
 {
     // Pull CSBI high to start charging
     output_high(CSBI1);
+    output_high(CSBI2);
     
     // Pull CSBI low, write stop bits
     output_low(CSBI1);
+    output_low(CSBI2);
     ltc6804_write_config(0x00);
+    ltc6804_write_config2(0x00);
     
     // Disable discharge timer
     disable_interrupts(INT_TIMER3);
@@ -155,6 +188,7 @@ void isr_timer4(void)
 {
     // Pull CSBI high to stop charging
     output_high(CSBI1);
+    output_high(CSBI2);
     
     gb_ready_to_balance = true;
     
@@ -177,6 +211,7 @@ void isr_timer2(void)
 void main()
 {
     int data[8];
+    cell_t charge_cell, discharge_cell;
     
     // Set up and enable timer 2 to interrupt every 1ms using 20MHz clock
     setup_timer2(TMR_INTERNAL|TMR_DIV_BY_256,39);
@@ -187,6 +222,7 @@ void main()
     setup_spi2(SPI_MASTER|SPI_SCK_IDLE_HIGH|SPI_CLK_DIV_12|SPI_XMIT_L_TO_H);
     
     init_PEC15_Table();
+    init_cells();
     
     // Send ADCV Command
     ltc6804_wakeup();
@@ -196,49 +232,25 @@ void main()
     
     while (true)
     {
-        //start_discharge(BIT0,BIT1);
-        ltc6804_wakeup();
-        output_low(CSBI1);
-        ltc6804_write_command(ADCV);
-        output_high(CSBI1);
+        charge_cell = g_cell[2];
+        discharge_cell = g_cell[1];
         
-        delay_us(500);
-        
-        output_low(CSBI1);
-        ltc6804_write_command(RDCVA);
-        data[0] = spi_read(0xFF);
-        data[1] = spi_read(0xFF);
-        data[2] = spi_read(0xFF);
-        data[3] = spi_read(0xFF);
-        data[4] = spi_read(0xFF);
-        data[5] = spi_read(0xFF);
-        data[6] = spi_read(0xFF);
-        data[7] = spi_read(0xFF);
-        output_high(CSBI1);
-        
-        printf("\r\n%X\t%X\t%X\t%X\t%X\t%X\t%X\t%X",data[1],data[0],data[3],data[2],data[5],data[4],data[7],data[6]);
-        
-        ltc6804_wakeup2();
-        output_low(CSBI2);
-        ltc6804_write_command2(ADCV);
-        output_high(CSBI2);
-        
-        delay_us(500);
-        
-        output_low(CSBI2);
-        ltc6804_write_command2(RDCVA);
-        data[0] = spi_read2(0xFF);
-        data[1] = spi_read2(0xFF);
-        data[2] = spi_read2(0xFF);
-        data[3] = spi_read2(0xFF);
-        data[4] = spi_read2(0xFF);
-        data[5] = spi_read2(0xFF);
-        data[6] = spi_read2(0xFF);
-        data[7] = spi_read2(0xFF);
-        output_high(CSBI2);
-        
-        printf("\r\n%X\t%X\t%X\t%X\t%X\t%X\t%X\t%X\n",data[1],data[0],data[3],data[2],data[5],data[4],data[7],data[6]);
-        
-        delay_ms(10);
+        if (input(UNBALANCE_PIN) == 1)
+        {
+            output_toggle(HEARTBEAT_LED1);
+            start_balance(charge_cell, discharge_cell);
+            delay_ms(20);
+        }
+        else if (input(BALANCE_PIN) == 1)
+        {
+            output_toggle(HEARTBEAT_LED2);
+            start_balance(discharge_cell, charge_cell);
+            delay_ms(20);
+        }
+        else
+        {
+            output_low(HEARTBEAT_LED1);
+            output_low(HEARTBEAT_LED2);
+        }
     }
 }

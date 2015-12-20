@@ -51,6 +51,10 @@ typedef struct
     int8 ov_flag;
     int8 uv_flag;
     int8 ot_flag;
+    int16 discharge1;
+    int16 discharge2;
+    int16 charge1;
+    int16 charge2;
 } cell_t;
 
 // Function prototypes
