@@ -27,10 +27,7 @@
 #define WRCOMM  0x0721 // Write COMM register group
 #define RDCOMM  0x0722 // Read COMM register group
 #define STCOMM  0x0723 // Start I2C/SPI communication
-#define ADCV    0x0270 // Start cell voltage ADC conversion and poll status
-                       // - MD = 01, 27kHz mode (fast) with ADCOPT = 0
-                       // - DCP = 1, discharge permitted during ADC conversion
-                       // - CHST = 000, 748us conversion time
+#define ADCV    0x0370 // Datasheet page 53
 
 // LTC6804 configuration bytes (bytes 4 and 5 used for charging/discharging)
 #define CFGR0   0x08   // VREFON = 1, ADCOPT = 0
@@ -58,11 +55,13 @@ typedef struct
 
 // Function prototypes
 void ltc6804_wakeup(void);
+void ltc6804_wakeup2(void);
 void ltc6804_write_command(unsigned int16);
 void ltc6804_write_command2(int16);
 void ltc6804_write_config(int16);
 void ltc6804_write_config2(int16);
 void ltc6804_init(void);
+void ltc6804_init2(void);
 void ltc6804_start_cell_voltage_adc_conversion(void);
 void ltc6804_read_cell_voltages(cell_t *);
 void ltc6804_read_voltage_flags(cell_t *);
@@ -75,6 +74,16 @@ void ltc6804_wakeup(void)
     output_high(CSBI1);
     delay_us(14);
     output_low(CSBI1);
+}
+
+void ltc6804_wakeup2(void)
+{
+    //Wake up serial interface
+    output_low(CSBI2);
+    delay_us(2);
+    output_high(CSBI2);
+    delay_us(14);
+    output_low(CSBI2);
 }
 
 // Sends an 11 bit (2 bytes) command to LTC-1
@@ -161,6 +170,14 @@ void ltc6804_init(void)
     output_low(CSBI1);
     ltc6804_write_config(0x0000);
     output_high(CSBI1);
+}
+
+// Sends configuration bytes to LTC-1 and LTC-2
+void ltc6804_init2(void)
+{
+    output_low(CSBI2);
+    ltc6804_write_config2(0x0000);
+    output_high(CSBI2);
 }
 
 // Starts the cell voltage ADC conversion

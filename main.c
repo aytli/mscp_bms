@@ -54,10 +54,10 @@
 #pin_select SCK1OUT = PIN_B2 // SCK
 #pin_select SS1OUT  = CSBI1  // SS
 
-/*#pin_select SDI2    = PIN_B15
+#pin_select SDI2    = PIN_B15
 #pin_select SDO2    = PIN_B14
 #pin_select SCK2OUT = PIN_B13
-#pin_select SS2OUT  = CSBI2*/
+#pin_select SS2OUT  = CSBI2
 
 // Charge and discharge time
 #define CHARGE_MS    1
@@ -184,12 +184,15 @@ void main()
 
     // Set up SPI ports
     setup_spi(SPI_MASTER|SPI_SCK_IDLE_HIGH|SPI_CLK_DIV_12|SPI_XMIT_L_TO_H);
+    setup_spi2(SPI_MASTER|SPI_SCK_IDLE_HIGH|SPI_CLK_DIV_12|SPI_XMIT_L_TO_H);
     
     init_PEC15_Table();
     
     // Send ADCV Command
     ltc6804_wakeup();
     ltc6804_init();
+    ltc6804_wakeup2();
+    ltc6804_init2();
     
     while (true)
     {
@@ -215,18 +218,24 @@ void main()
         
         printf("\r\n%X\t%X\t%X\t%X\t%X\t%X\t%X\t%X",data[1],data[0],data[3],data[2],data[5],data[4],data[7],data[6]);
         
+        ltc6804_wakeup2();
+        output_low(CSBI2);
+        ltc6804_write_command2(ADCV);
+        output_high(CSBI2);
         
-        output_low(CSBI1);
-        ltc6804_write_command(RDCVB);
-        data[0] = spi_read(0xFF);
-        data[1] = spi_read(0xFF);
-        data[2] = spi_read(0xFF);
-        data[3] = spi_read(0xFF);
-        data[4] = spi_read(0xFF);
-        data[5] = spi_read(0xFF);
-        data[6] = spi_read(0xFF);
-        data[7] = spi_read(0xFF);
-        output_high(CSBI1);
+        delay_us(500);
+        
+        output_low(CSBI2);
+        ltc6804_write_command2(RDCVA);
+        data[0] = spi_read2(0xFF);
+        data[1] = spi_read2(0xFF);
+        data[2] = spi_read2(0xFF);
+        data[3] = spi_read2(0xFF);
+        data[4] = spi_read2(0xFF);
+        data[5] = spi_read2(0xFF);
+        data[6] = spi_read2(0xFF);
+        data[7] = spi_read2(0xFF);
+        output_high(CSBI2);
         
         printf("\r\n%X\t%X\t%X\t%X\t%X\t%X\t%X\t%X\n",data[1],data[0],data[3],data[2],data[5],data[4],data[7],data[6]);
         
