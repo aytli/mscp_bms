@@ -8,4 +8,4 @@
 #use delay(internal = 20000000)
 
 // UART port (PIC24HJ128GP502)
-#use rs232(baud = 9600, xmit = PIN_B8, rcv = PIN_B9)
+#use rs232(baud = 57600, xmit = PIN_B8, rcv = PIN_B9)

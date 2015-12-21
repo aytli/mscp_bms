@@ -130,6 +130,15 @@ int get_lowest_voltage_cell_index(void)
     return lowest;
 }
 
+void print_cell_voltages(void)
+{
+    printf("\n\n\n\n\n\n\rCell1: %Lu\tCell2: %Lu\tCell3: %Lu\tCell4: %Lu",
+           g_cell[0].voltage,
+           g_cell[1].voltage,
+           g_cell[2].voltage,
+           g_cell[3].voltage);
+}
+
 // Write discharge bits, start discharge timer
 void start_balance(cell_t discharge, cell_t charge)
 {
@@ -238,13 +247,19 @@ void main()
         if (input(UNBALANCE_PIN) == 1)
         {
             output_toggle(HEARTBEAT_LED1);
-            start_balance(charge_cell, discharge_cell);
+            //start_balance(charge_cell, discharge_cell);
+            //while(gb_ready_to_balance == false);
+            ltc6804_read_cell_voltages(g_cell);
+            print_cell_voltages();
             delay_ms(20);
         }
         else if (input(BALANCE_PIN) == 1)
         {
             output_toggle(HEARTBEAT_LED2);
-            start_balance(discharge_cell, charge_cell);
+            //start_balance(discharge_cell, charge_cell);
+            //while(gb_ready_to_balance == false);
+            ltc6804_read_cell_voltages(g_cell);
+            print_cell_voltages();
             delay_ms(20);
         }
         else

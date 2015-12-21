@@ -43,10 +43,14 @@
 #define N_CHANNELS 12 // The LTC6804 can monitor up to 12 cells
 #define N_CELLS    4  // Number of cells actually connected
 
+// Running average size
+#define N_SAMPLES 20
+
 // Struct for a cell
 typedef struct
 {
     unsigned int16 voltage; // LTC6804 has a 16 bit voltage ADC
+    unsigned int16 samples[N_SAMPLES];
     int8 temperature;
     int8 ov_flag;
     int8 uv_flag;
@@ -66,7 +70,6 @@ void ltc6804_write_config(int16);
 void ltc6804_write_config2(int16);
 void ltc6804_init(void);
 void ltc6804_init2(void);
-void ltc6804_start_cell_voltage_adc_conversion(void);
 void ltc6804_read_cell_voltages(cell_t *);
 void ltc6804_read_voltage_flags(cell_t *);
 
@@ -184,62 +187,61 @@ void ltc6804_init2(void)
     output_high(CSBI2);
 }
 
-// Starts the cell voltage ADC conversion
-void ltc6804_start_cell_voltage_adc_conversion(void)
+void write_average_voltage(unsigned int16 new, cell_t * cell)
 {
-    output_low(CSBI1);
-    ltc6804_write_command(ADCV);
-    ltc6804_write_command(0xAF42);
-    output_high(CSBI1);
+    int i;
+    int zeros = 0;
+    unsigned int32 sum = new;
+    
+    for (i = 0 ; i < N_SAMPLES-1 ; i++)
+    {
+        if (cell->samples[i] == 0)
+            zeros += 1;
+        
+        sum += cell->samples[i];
+        cell->samples[i] = cell->samples[i+1];
+    }
+    cell->samples[N_SAMPLES-1] = new;
+    cell->voltage = (unsigned int16) (sum/(N_SAMPLES-zeros));
 }
 
 // Receives a pointer to an array of cells, writes the cell voltage to each one
 void ltc6804_read_cell_voltages(cell_t * cell)
 {
-    int i;
-    int msb = 0x69;
-    int lsb = 0xFF;
+    int i, msb, lsb;
     
     // Start the cell voltage adc conversion
-    ltc6804_start_cell_voltage_adc_conversion();
+    output_low(CSBI1);
+    ltc6804_write_command(ADCV);
+    output_high(CSBI1);
     
-    // Wait 1ms for the conversion to complete
-    delay_ms(1);
+    // Wait 500us for the conversion to complete
+    delay_us(500);
     
     output_low(CSBI1);
     
     ltc6804_write_command(RDCVA); // voltage data for cells 1-3
     for (i = 0 ; i < 3 ; i ++)
     {
-        //lsb = spi_read();
-        //msb = spi_read();
-        cell[i].voltage = (msb << 8) + lsb;
+        lsb = spi_read(0xFF);
+        msb = spi_read(0xFF);
+        write_average_voltage((msb<<8)+lsb,&cell[i]);
     }
+    spi_read(0xFF); // PEC1
+    spi_read(0xFF); // PEC2
+    
+    output_high(CSBI1);
+    output_low(CSBI1);
     
     ltc6804_write_command(RDCVB); // voltage data for cells 4-6
     for (i = 3 ; i < 6 ; i ++)
     {
-        //lsb = spi_read();
-        //msb = spi_read();
-        cell[i].voltage = (msb << 8) + lsb;
+        lsb = spi_read(0xFF);
+        msb = spi_read(0xFF);
+        write_average_voltage((msb<<8)+lsb,&cell[i]);
     }
-    
-    // Prototype only contains 4 cells, no need to measure cells 7-12
-    /*ltc6804_write_command(RDCVC); // voltage data for cells 7-9
-    for (i = 6 ; i < 9 ; i ++)
-    {
-        lsb = spi_read();
-        msb = spi_read();
-        cell[i]->voltage = (msb << 8) + lsb;
-    }
-    
-    ltc6804_write_command(RDCVD); // voltage data for cells 10-12
-    for (i = 9 ; i < 12 ; i ++)
-    {
-        lsb = spi_read();
-        msb = spi_read();
-        cell[i]->voltage = (msb << 8) + lsb;
-    }*/
+    spi_read(0xFF); // PEC1
+    spi_read(0xFF); // PEC2
     
     output_high(CSBI1);
 }
