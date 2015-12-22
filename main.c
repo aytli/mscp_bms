@@ -63,9 +63,9 @@
 #pin_select SCK2OUT = PIN_B13
 #pin_select SS2OUT  = CSBI2
 
-// Charge and discharge time
-#define CHARGE_MS    2
-#define DISCHARGE_MS 2
+// Discharge and charge time in us (cannot exceed 6553us)
+#define DISCHARGE_US 500
+#define CHARGE_US    2000
 
 static cell_t g_cell[N_CHANNELS];
 static int1   gb_ready_to_balance;
@@ -162,7 +162,7 @@ void start_balance(cell_t discharge, cell_t charge)
     
     // Enable discharge timer
     clear_interrupt(INT_TIMER3);
-    setup_timer3(TMR_INTERNAL|TMR_DIV_BY_8,1250*DISCHARGE_MS);
+    setup_timer3(TMR_INTERNAL|TMR_DIV_BY_1,10*DISCHARGE_US);
     enable_interrupts(INT_TIMER3);
 }
 
@@ -187,7 +187,7 @@ void isr_timer3(void)
     
     // Enable charge timer
     clear_interrupt(INT_TIMER4);
-    setup_timer4(TMR_INTERNAL|TMR_DIV_BY_8,1250*CHARGE_MS);
+    setup_timer4(TMR_INTERNAL|TMR_DIV_BY_1,10*CHARGE_US);
     enable_interrupts(INT_TIMER4);
 }
 
@@ -250,7 +250,7 @@ void main()
             //start_balance(charge_cell, discharge_cell);
             //while(gb_ready_to_balance == false);
             ltc6804_read_cell_voltages(g_cell);
-            print_cell_voltages();
+            //print_cell_voltages();
             delay_ms(20);
         }
         else if (input(BALANCE_PIN) == 1)
@@ -259,7 +259,7 @@ void main()
             //start_balance(discharge_cell, charge_cell);
             //while(gb_ready_to_balance == false);
             ltc6804_read_cell_voltages(g_cell);
-            print_cell_voltages();
+            //print_cell_voltages();
             delay_ms(20);
         }
         else

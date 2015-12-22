@@ -43,14 +43,10 @@
 #define N_CHANNELS 12 // The LTC6804 can monitor up to 12 cells
 #define N_CELLS    4  // Number of cells actually connected
 
-// Running average size
-#define N_SAMPLES 20
-
 // Struct for a cell
 typedef struct
 {
     unsigned int16 voltage; // LTC6804 has a 16 bit voltage ADC
-    unsigned int16 samples[N_SAMPLES];
     int8 temperature;
     int8 ov_flag;
     int8 uv_flag;
@@ -187,24 +183,6 @@ void ltc6804_init2(void)
     output_high(CSBI2);
 }
 
-void write_average_voltage(unsigned int16 new, cell_t * cell)
-{
-    int i;
-    int zeros = 0;
-    unsigned int32 sum = new;
-    
-    for (i = 0 ; i < N_SAMPLES-1 ; i++)
-    {
-        if (cell->samples[i] == 0)
-            zeros += 1;
-        
-        sum += cell->samples[i];
-        cell->samples[i] = cell->samples[i+1];
-    }
-    cell->samples[N_SAMPLES-1] = new;
-    cell->voltage = (unsigned int16) (sum/(N_SAMPLES-zeros));
-}
-
 // Receives a pointer to an array of cells, writes the cell voltage to each one
 void ltc6804_read_cell_voltages(cell_t * cell)
 {
@@ -225,7 +203,7 @@ void ltc6804_read_cell_voltages(cell_t * cell)
     {
         lsb = spi_read(0xFF);
         msb = spi_read(0xFF);
-        write_average_voltage((msb<<8)+lsb,&cell[i]);
+        cell[i].voltage = (msb<<8)+lsb;
     }
     spi_read(0xFF); // PEC1
     spi_read(0xFF); // PEC2
@@ -238,7 +216,7 @@ void ltc6804_read_cell_voltages(cell_t * cell)
     {
         lsb = spi_read(0xFF);
         msb = spi_read(0xFF);
-        write_average_voltage((msb<<8)+lsb,&cell[i]);
+        cell[i].voltage = (msb<<8)+lsb;
     }
     spi_read(0xFF); // PEC1
     spi_read(0xFF); // PEC2
@@ -254,31 +232,33 @@ void ltc6804_read_voltage_flags(cell_t * cell)
     output_low(CSBI1);
     
     ltc6804_write_command(RDSTATB); // voltage flags are stored in register group B
-    data = spi_read(); // 1st byte = digital power supply voltage lsb, useless
-    data = spi_read(); // 2nd byte = digital power supply voltage msb, useless
+    spi_read(0xFF); // 1st byte = digital power supply voltage lsb, useless
+    spi_read(0xFF); // 2nd byte = digital power supply voltage msb, useless
     
-    data = spi_read(); // 3rd byte = ov and uv flags for cells 1-4
+    data = spi_read(0xFF); // 3rd byte = ov and uv flags for cells 1-4
     for (i = 0 ; i < 3 ; i+=2)
     {
         cell[i].uv_flag = (data & (1 <<  i   )) >>  i;
         cell[i].ov_flag = (data & (1 << (i+1))) >> (i+1);
     }
     
-    data = spi_read(); // 4th byte = ov and uv flags for cells 5-8
+    data = spi_read(0xFF); // 4th byte = ov and uv flags for cells 5-8
     for (i = 4 ; i < 7 ; i+=2)
     {
         cell[i].uv_flag = (data & (1 <<  i   )) >>  i;
         cell[i].ov_flag = (data & (1 << (i+1))) >> (i+1);
     }
     
-    data = spi_read(); // 5th byte = ov and uv flags for cells 9-12
+    data = spi_read(0xFF); // 5th byte = ov and uv flags for cells 9-12
     for (i = 8 ; i < 11 ; i+=2)
     {
         cell[i].uv_flag = (data & (1 <<  i   )) >>  i;
         cell[i].ov_flag = (data & (1 << (i+1))) >> (i+1);
     }
     
-    data = spi_read(); // 6th byte = revision code and other useless bits
+    spi_read(0xFF); // 6th byte = revision code and other useless bits
+    spi_read(0xFF); // PEC 1
+    spi_read(0xFF); // PEC 2
     
     output_high(CSBI1);
 }
