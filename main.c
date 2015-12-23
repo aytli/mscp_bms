@@ -132,11 +132,27 @@ int get_lowest_voltage_cell_index(void)
 
 void print_cell_voltages(void)
 {
+    int i,j;
+    unsigned int32 sum;
+    
+    for (i = 0 ; i < N_CELLS ; i++)
+    {
+        sum = 0;
+        for (j = 0 ; j < N_SAMPLES-1 ; j++)
+        {
+            sum += g_cell[i].samples[j];
+            g_cell[i].samples[j] = g_cell[i].samples[j+1];
+        }
+        sum += g_cell[i].voltage;
+        g_cell[i].samples[N_SAMPLES-1] = g_cell[i].voltage;
+        g_cell[i].average_voltage = (unsigned int16) (sum/N_SAMPLES);
+    }
+    
     printf("\n\n\n\n\n\n\rCell1: %Lu\tCell2: %Lu\tCell3: %Lu\tCell4: %Lu",
-           g_cell[0].voltage,
-           g_cell[1].voltage,
-           g_cell[2].voltage,
-           g_cell[3].voltage);
+           g_cell[0].average_voltage,
+           g_cell[1].average_voltage,
+           g_cell[2].average_voltage,
+           g_cell[3].average_voltage);
 }
 
 // Write discharge bits, start discharge timer
@@ -246,22 +262,84 @@ void main()
         
         if (input(UNBALANCE_PIN) == 1)
         {
+            /* NOTE:
+              
+              The large delay value of (120+120)+(140+120+120) is roughly how
+              long it will take to send one write config command to all 6 LTC
+              chips on the two SPI ports. It takes about 120us to send 6 bytes
+              of data + 2 bytes of PEC, and about 20 us for the command bytes.
+              
+              In its current state, the code only talks to LTC-1, and it will
+              delay for a period of time to simulate commands being sent to the
+              other chips on the daisy chain. It is set to control S1 and S2.
+              
+              This code will send 0x0001 to activate S1, delay for 5ms, then
+              send 0x0002 to turn on S2, delay for 5ms, and then send 0x0000 to
+              turn everything off. This code will run when the UNBALANCE button
+              is pressed, this button is located on PIN_B7.
+              
+              The big problem we saw was that the S pins would turn on much
+              faster than they turn off. This will cause the two external PMOSes
+              to short for a period of about 80us.
+              
+              Putting a 22nF capacitor from the gate to ground (the negative
+              terminal of that particular cell) will slow down the PMOS turn on
+              time so that the overlap will be smaller, but it will also delay
+              the turn off time. We tried finding a way to connect it so that
+              the capacitor will charge and slow down the turn on time, and
+              discharge when the PMOS is turned off.
+              
+              I wrote a lot of stuff here. Moe was there with me so he should
+              understand this. If not, feel free to message me.
+              
+                  - Andy
+            */
+            
             output_toggle(HEARTBEAT_LED1);
+            output_low(CSBI1);
+            ltc6804_write_config(0x0001);
+            delay_us((120+120) + (140+120+120));
+            output_high(CSBI1);
+            
+            delay_ms(5);
+            
+            // This code will send a commmand to disable S1 before enabling S2.
+            /*output_low(CSBI1);
+            ltc6804_write_config(0x0000);
+            delay_us((120+120) + (140+120+120));
+            output_high(CSBI1);*/
+            
+            output_low(CSBI1);
+            ltc6804_write_config(0x0002);
+            delay_us((120+120) + (140+120+120));
+            output_high(CSBI1);
+            
+            delay_ms(5);
+            
+            output_low(CSBI1);
+            ltc6804_write_config(0x0000);
+            delay_us((120+120) + (140+120+120));
+            output_high(CSBI1);
+            
+            delay_ms(5);
+            
+            
+            // OLD CODE FROM BUTTON FUNCTIONALITY
             //start_balance(charge_cell, discharge_cell);
             //while(gb_ready_to_balance == false);
-            ltc6804_read_cell_voltages(g_cell);
+            //ltc6804_read_cell_voltages(g_cell);
             //print_cell_voltages();
-            delay_ms(20);
+            //delay_ms(5);
         }
-        else if (input(BALANCE_PIN) == 1)
+        /*else if (input(BALANCE_PIN) == 1)
         {
             output_toggle(HEARTBEAT_LED2);
-            //start_balance(discharge_cell, charge_cell);
-            //while(gb_ready_to_balance == false);
+            start_balance(discharge_cell, charge_cell);
+            while(gb_ready_to_balance == false);
             ltc6804_read_cell_voltages(g_cell);
-            //print_cell_voltages();
+            print_cell_voltages();
             delay_ms(20);
-        }
+        }*/
         else
         {
             output_low(HEARTBEAT_LED1);

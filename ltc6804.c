@@ -43,10 +43,15 @@
 #define N_CHANNELS 12 // The LTC6804 can monitor up to 12 cells
 #define N_CELLS    4  // Number of cells actually connected
 
+// Number of samples for moving average
+#define N_SAMPLES  20
+
 // Struct for a cell
 typedef struct
 {
     unsigned int16 voltage; // LTC6804 has a 16 bit voltage ADC
+    unsigned int16 average_voltage;
+    unsigned int16 samples[N_SAMPLES];
     int8 temperature;
     int8 ov_flag;
     int8 uv_flag;
