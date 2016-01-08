@@ -1,6 +1,10 @@
 #ifndef LCD_C
 #define LCD_C
 
+// NOTE: In order to pass strings, add the following line to main.h
+// #device PASS_STRINGS = IN_RAM
+// Source: https://www.ccsinfo.com/forum/viewtopic.php?t=44633
+
 // lcd interface (4 bit mode)
 // datasheet: http://www.kyocera-display.com/SiteImages/PartList/SPEC/51847ad%C3%A9%C3%A0.pdf
 // lcd interface tutorial: http://www.8051projects.net/lcd-interfacing/lcd-4-bit.php
