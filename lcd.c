@@ -8,13 +8,13 @@
 // lcd interface (4 bit mode)
 // datasheet: http://www.kyocera-display.com/SiteImages/PartList/SPEC/51847ad%C3%A9%C3%A0.pdf
 // lcd interface tutorial: http://www.8051projects.net/lcd-interfacing/lcd-4-bit.php
-#define RS_PIN PIN_A1
-#define RW_PIN PIN_A2
-#define EN_PIN PIN_A3
-#define D4_PIN PIN_B5
-#define D5_PIN PIN_B4
-#define D6_PIN PIN_B3
-#define D7_PIN PIN_B2
+#define RS_PIN PIN_B0
+#define RW_PIN PIN_B1
+#define EN_PIN PIN_B2
+#define D4_PIN PIN_B15
+#define D5_PIN PIN_B14
+#define D6_PIN PIN_B13
+#define D7_PIN PIN_B12
 
 #define COMMAND_REG    0
 #define DATA_REG       1
@@ -40,6 +40,7 @@ void lcd_send_nibble(int8 data)
     
     // write operation is triggered by a falling edge of the EN pin
     output_high(EN_PIN);
+    delay_us(1);
     output_low(EN_PIN);
 }
 
