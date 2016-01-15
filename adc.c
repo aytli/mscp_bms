@@ -1,6 +1,9 @@
 #ifndef ADC_C
 #define ADC_C
 
+// ADS7952 datasheet: http://www.ti.com/lit/ds/symlink/ads7952.pdf
+
+// ADS7952 command codes
 #define CONTINUE_OP     0b0000
 #define MANUAL_MODE_CON 0b0001
 #define AUTO1_MODE_CON  0b0010
@@ -20,9 +23,6 @@ void adc_init_manual(void)
     spi_write2(0x00);
     output_high(ADC1_SEL);
 }
-
-
-
 
 /*unsigned int16 g_adc_channel[36];
 

@@ -3,9 +3,6 @@
 
 #include "pec.c"
 
-// NOTE:
-// LTC-1 is an LTC6804 chip used to both poll and charge/discharge the cells
-// LTC-2 is an LTC6804 chip used only to charge/discharge the cells
 // LTC6804 datasheet: http://cds.linear.com/docs/en/datasheet/680412fb.pdf
 
 // LTC6804 spi commands, 11 bits each
