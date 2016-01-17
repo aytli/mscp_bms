@@ -1,86 +1,70 @@
 #ifndef ADC_C
 #define ADC_C
 
-// ADS7952 datasheet: http://www.ti.com/lit/ds/symlink/ads7952.pdf
+#define CSBI2 PIN_B12 // ADS7952 chip select, active low
 
-// ADS7952 command codes
-#define CONTINUE_OP     0b0000
-#define MANUAL_MODE_CON 0b0001
-#define AUTO1_MODE_CON  0b0010
-#define AUTO2_MODE_CON  0b0011
-#define GPIO_PROG       0b0100
-#define AUTO1_MODE_PROG 0b1000
-#define AUTO2_MODE_PROG 0b1001
-#define ALARM0_PROG     0b1100
-#define ALARM1_PROG     0b1101
-#define ALARM2_PROG     0b1110
-#define ALARM3_PROG     0b1111
-
-void adc_init_manual(void)
+// Configures the ADS7952 to operate in Auto-1 Mode
+void ads7952_init(void)
 {
-    output_low(ADC1_SEL);
-    spi_write2(0x18);
-    spi_write2(0x00);
-    output_high(ADC1_SEL);
+   // For the first frame the ADS7952 is in manual mode channel 0
+   output_low(CSBI2);
+   spi_write(0x00);
+   spi_write(0x00);
+   output_high(CSBI2);
+
+   // Configure the Auto-1 Mode register
+   // This mode will cycle through all of the channels automatically.
+   output_low(CSBI2);
+   spi_write(0x8F);
+   spi_write(0xFF);
+   output_high(CSBI2);
+   output_low(CSBI2);
+   spi_write(0xFF);
+   spi_write(0xFF);
+   output_high(CSBI2);
+
+   unsigned int8 data;
+   while (1) {
+      output_low(CSBI2);
+      data = spi_read(0x20);
+      spi_read(0x00);
+      output_high(CSBI2);
+
+      /*
+       * This makes sure that the next frame will contain conversion data
+       * for channel 0. If this is not included, there will be synchronization
+       * issues.
+       */
+      if (((data >> 4) & 0x0F) == 0x0B) {
+         break;
+      }
+   }
 }
 
-/*unsigned int16 g_adc_channel[36];
-
-void init_adcs()
+// Reads all the channel voltages
+// Expects an array of size 12 as an input
+void ads7952_read_all_channels(unsigned int16* buf)
 {
-   // Program all ADS795s for auto mode 1
-   // ADCs will automatically cycle through all the channels
-   output_low(ADC1_SEL);
-   spi_write(0x8F);
-   spi_write(0xFF);
-   output_high(ADC1_SEL);
-   output_low(ADC2_SEL);
-   spi_write(0x8F);
-   spi_write(0xFF);
-   output_high(ADC2_SEL);
-   output_low(ADC3_SEL);
-   spi_write(0x8F);
-   spi_write(0xFF);
-   output_high(ADC3_SEL);
+   int ch;
+   unsigned int8 data1, data2;
+
+   for (ch = 0; ch < 12; ch++) {
+      if (ch == 0) {
+         data1 = spi_read(0x24);
+      } else {
+         data1 = spi_read(0x20);
+      }
+
+      // The power down bit must be set 1 frame before the last frame.
+      // The chip powers down after the 16-th falling edge of SCK.
+      if (ch == 10) {
+         data2 = spi_read(0x10);
+      } else {
+         data2 = spi_read(0x00);
+      }
+
+      buf[ch] = ((data1 << 8) & 0xFF00) | (data2 & 0x00FF);
+   }
 }
-
-void update_channels()
-{
-   int i;
-   output_low(ADC1_SEL);
-   spi_read(0x24);
-   spi_read(0x00);
-   output_high(ADC1_SEL);
-   for (i = 0; i < 12; i++) {
-      output_low(ADC1_SEL);
-      g_adc_channel[i] = spi_read(0x20) << 8;
-      // Power down bit should be set on the second last read
-      g_adc_channel[i] |= spi_read(i == 10 ? 0x10 : 0x00);
-      output_high(ADC1_SEL);
-   }
-   
-   output_low(ADC2_SEL);
-   spi_read(0x24);
-   spi_read(0x00);
-   output_high(ADC2_SEL);
-   for (i = 0; i < 12; i++) {
-      output_low(ADC2_SEL);
-      g_adc_channel[12 + i] = spi_read(0x20) << 8;
-      g_adc_channel[12 + i] |= spi_read(i == 10 ? 0x10 : 0x00);
-      output_high(ADC2_SEL);
-   }
-   
-   output_low(ADC3_SEL);
-   spi_read(0x24);
-   spi_read(0x00);
-   output_high(ADC3_SEL);
-   for (i = 0; i < 12; i++) {
-      output_low(ADC3_SEL);
-      g_adc_channel[24 + i] = spi_read(0x20) << 8;
-      g_adc_channel[24 + i] |= spi_read(i == 10 ? 0x10 : 0x00);
-      output_high(ADC3_SEL);
-   }
-}*/
 
 #endif
-
