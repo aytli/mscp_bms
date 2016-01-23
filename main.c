@@ -20,9 +20,12 @@
 // Macros to disable timers and clear flags
 #define CLEAR_T2_FLAG IFS0  &= 0xFF7F
 
-static cell_t g_cell[N_CHANNELS];
-static int    g_highest_voltage_cell_index;
-static int    g_lowest_voltage_cell_index;
+#define N_ADC_CHANNELS 24
+
+static cell_t         g_cell[N_CHANNELS];
+static unsigned int16 g_adc_data[N_ADC_CHANNELS];
+static int            g_highest_voltage_cell_index;
+static int            g_lowest_voltage_cell_index;
 
 // Initializes the cells, clears all flags, resets highest and lowest cells
 void init_cells(void)
@@ -93,11 +96,11 @@ void print_cell_voltages(void)
 }
 
 // Set up timer 2 as a millisecond timer
-int16 ms;
+int16 g_ms;
 #int_timer2 level = 4
 void isr_timer2(void)
 {
-    ms++; //keep a running timer interupt that increments every milli-second
+    g_ms++; //keep a running timer interupt that increments every milli-second
     CLEAR_T2_FLAG;
 }
 
@@ -119,8 +122,15 @@ void main()
     //ltc6804_wakeup();
     //ltc6804_init();
     
+    ads7952_init();
+    
     while (true)
     {
+      if (g_ms >= 1000) 
+      {
+         g_ms == 0;
+         ads7952_read_all_channels(g_adc_data);
+      }
     }
 }
 
