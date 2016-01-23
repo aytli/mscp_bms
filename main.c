@@ -5,6 +5,7 @@
 
 // Includes
 #include "main.h"
+#include "math.h"
 #include "pec.c"
 #include "ltc6804.c"
 #include "adc.c"
@@ -20,10 +21,9 @@
 // Macros to disable timers and clear flags
 #define CLEAR_T2_FLAG IFS0  &= 0xFF7F
 
-#define N_ADC_CHANNELS 24
-
 static cell_t         g_cell[N_CHANNELS];
 static unsigned int16 g_adc_data[N_ADC_CHANNELS];
+static float          g_temps[N_ADC_CHANNELS];
 static int            g_highest_voltage_cell_index;
 static int            g_lowest_voltage_cell_index;
 
@@ -68,6 +68,24 @@ int get_lowest_voltage_cell_index(void)
         if (g_cell[i].voltage <= g_cell[lowest].voltage)
             lowest = i;
     return lowest;
+}
+
+// Use the simplified Steinhart-Hart equation to approximate temperatures
+void convert_adc_data_to_temps(void)
+{
+   int i;
+   for (i = 0; i < N_ADC_CHANNELS; i++)
+   {
+      float resistance = THERMISTOR_SERIES * (float)g_adc_data[i] / 
+         (LSBS_PER_VOLT * THERMISTOR_SUPPLY - (float)g_adc_data[i]);
+      float temperature = temperature / THERMISTOR_NOMINAL;
+      temperature = log(temperature);
+      temperature /= B_COEFF;
+      temperature += 1.0 / (TEMPERATURE_NOMINAL + 273.15);
+      temperature = 1.0 / temperature;
+      temperature -= 273.15;
+      g_temps[i] = temperature;
+   }
 }
 
 void print_cell_voltages(void)
@@ -130,6 +148,7 @@ void main()
       {
          g_ms == 0;
          ads7952_read_all_channels(g_adc_data);
+         convert_adc_data_to_temps();
       }
     }
 }

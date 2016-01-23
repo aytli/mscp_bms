@@ -3,6 +3,14 @@
 
 #define CSBI2 PIN_B12 // ADS7952 chip select, active low
 
+#define N_ADC_CHANNELS      24
+#define LSBS_PER_VOLT       819.2
+#define THERMISTOR_NOMINAL  10000.0
+#define TEMPERATURE_NOMINAL 25.0
+#define THERMISTOR_SUPPLY   3.3
+#define THERMISTOR_SERIES   10000.0
+#define B_COEFF             3950.0
+
 // Configures the ADS7952 to operate in Auto-1 Mode
 void ads7952_init(void)
 {
