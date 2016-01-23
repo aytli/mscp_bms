@@ -88,6 +88,16 @@ void convert_adc_data_to_temps(void)
    }
 }
 
+void print_temperatures(void)
+{
+   int i;
+   for (i = 0; i < N_ADC_CHANNELS; i++)
+   {
+      printf("temp[%d] = %f\n", i, g_temps[i]);
+   }
+   printf("\n");
+}
+
 void print_cell_voltages(void)
 {
     int i,j;
