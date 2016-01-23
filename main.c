@@ -78,7 +78,7 @@ void convert_adc_data_to_temps(void)
    {
       float resistance = THERMISTOR_SERIES * (float)g_adc_data[i] / 
          (LSBS_PER_VOLT * THERMISTOR_SUPPLY - (float)g_adc_data[i]);
-      float temperature = temperature / THERMISTOR_NOMINAL;
+      float temperature = resistance / THERMISTOR_NOMINAL;
       temperature = log(temperature);
       temperature /= B_COEFF;
       temperature += 1.0 / (TEMPERATURE_NOMINAL + 273.15);
@@ -156,7 +156,7 @@ void main()
     {
       if (g_ms >= 1000) 
       {
-         g_ms == 0;
+         g_ms = 0;
          ads7952_read_all_channels(g_adc_data);
          convert_adc_data_to_temps();
       }
