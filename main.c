@@ -20,7 +20,7 @@
 // Macros to disable timers and clear flags
 #define CLEAR_T2_FLAG IFS0  &= 0xFF7F
 
-static cell_t g_cell[N_CHANNELS];
+static cell_t g_cell[N_CELLS];
 static int    g_highest_voltage_cell_index;
 static int    g_lowest_voltage_cell_index;
 
@@ -29,7 +29,7 @@ void init_cells(void)
 {
     int i;
     
-    for (i = 0 ; i < N_CHANNELS ; i++)
+    for (i = 0 ; i < N_CELLS ; i++)
     {
         g_cell[i].voltage = 0;
         g_cell[i].temperature = 0;
@@ -85,11 +85,19 @@ void print_cell_voltages(void)
         g_cell[i].average_voltage = (unsigned int16) (sum/N_SAMPLES);
     }
     
-    printf("\n\n\n\n\n\n\rCell1: %Lu\tCell2: %Lu\tCell3: %Lu\tCell4: %Lu",
+    printf("\n\n\n\n\n\n\r%Lu\t%Lu\t%Lu\r\n%Lu\t%Lu\t%Lu\r\n%Lu\t%Lu\t%Lu\r\n%Lu\t%Lu\t%Lu",
            g_cell[0].average_voltage,
            g_cell[1].average_voltage,
            g_cell[2].average_voltage,
-           g_cell[3].average_voltage);
+           g_cell[3].average_voltage,
+           g_cell[4].average_voltage,
+           g_cell[5].average_voltage,
+           g_cell[12].average_voltage,
+           g_cell[13].average_voltage,
+           g_cell[14].average_voltage,
+           g_cell[15].average_voltage,
+           g_cell[16].average_voltage,
+           g_cell[17].average_voltage);
 }
 
 // Set up timer 2 as a millisecond timer
@@ -116,11 +124,14 @@ void main()
     init_cells();
     
     // Send ADCV Command
-    //ltc6804_wakeup();
-    //ltc6804_init();
+    ltc6804_wakeup();
+    ltc6804_init();
     
     while (true)
     {
+        ltc6804_read_cell_voltages(g_cell);
+        print_cell_voltages();
+        delay_ms(100);
     }
 }
 
