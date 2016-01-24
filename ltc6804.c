@@ -33,11 +33,10 @@
 #define CFGR3   0xA4   // Overvoltage  = 4.20V (0xA40)
 
 // Number of channels on the LTC6804, and number of channels being used
-#define N_CHANNELS 12 // The LTC6804 can monitor up to 12 cells
-#define N_CELLS    4  // Number of cells actually connected
+#define N_CELLS 24     // The LTC6804 can monitor up to 12 cells
 
 // Number of samples for moving average
-#define N_SAMPLES  20
+#define N_SAMPLES  10
 
 // Struct for a cell
 typedef struct
@@ -114,6 +113,7 @@ void ltc6804_init(void)
 {
     output_low(CSBI);
     ltc6804_write_config(0x0000);
+    ltc6804_write_config(0x0000);
     output_high(CSBI);
 }
 
@@ -142,11 +142,30 @@ void ltc6804_read_cell_voltages(cell_t * cell)
     spi_read(0xFF); // PEC1
     spi_read(0xFF); // PEC2
     
+    for (i = 12 ; i < 15 ; i ++)
+    {
+        lsb = spi_read(0xFF);
+        msb = spi_read(0xFF);
+        cell[i].voltage = (msb<<8)+lsb;
+    }
+    spi_read(0xFF); // PEC1
+    spi_read(0xFF); // PEC2
+    
     output_high(CSBI);
+    delay_us(10);
     output_low(CSBI);
     
     ltc6804_write_command(RDCVB); // voltage data for cells 4-6
     for (i = 3 ; i < 6 ; i ++)
+    {
+        lsb = spi_read(0xFF);
+        msb = spi_read(0xFF);
+        cell[i].voltage = (msb<<8)+lsb;
+    }
+    spi_read(0xFF); // PEC1
+    spi_read(0xFF); // PEC2
+    
+    for (i = 15 ; i < 18 ; i ++)
     {
         lsb = spi_read(0xFF);
         msb = spi_read(0xFF);
