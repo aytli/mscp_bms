@@ -93,7 +93,7 @@ void print_temperatures(void)
    int i;
    for (i = 0; i < N_ADC_CHANNELS; i++)
    {
-      printf("temp[%d] = %f\n", i, g_temps[i]);
+      printf("temp[%d] = %f\r\n", i, g_temps[i]);
    }
    printf("\n");
 }
@@ -147,18 +147,20 @@ void main()
     init_cells();
     
     // Send ADCV Command
-    //ltc6804_wakeup();
-    //ltc6804_init();
+    ltc6804_wakeup();
+    ltc6804_init();
     
     ads7952_init();
     
     while (true)
     {
       if (g_ms >= 1000) 
-      {
+      {                  
          g_ms = 0;
          ads7952_read_all_channels(g_adc_data);
          convert_adc_data_to_temps();
+         
+         print_temperatures();
       }
     }
 }
