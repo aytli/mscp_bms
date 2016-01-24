@@ -63,11 +63,9 @@ void ads7952_read_all_channels(unsigned int16* buf)
       } else {
          data1 = spi_read2(0x20);
       }
-      output_high(CSBI2);
 
       // The power down bit must be set 1 frame before the last frame.
       // The chip powers down after the 16-th falling edge of SCK.
-      output_low(CSBI2);
       if (ch == 10) {
          data2 = spi_read2(0x10);
       } else {
