@@ -85,19 +85,16 @@ void print_cell_voltages(void)
         g_cell[i].average_voltage = (unsigned int16) (sum/N_SAMPLES);
     }
     
-    printf("\n\n\n\n\n\n\r%Lu\t%Lu\t%Lu\r\n%Lu\t%Lu\t%Lu\r\n%Lu\t%Lu\t%Lu\r\n%Lu\t%Lu\t%Lu",
+    printf("\n\n\n\n\n\n\rLower:\t%Lu\t%Lu\t%Lu\t%Lu",
            g_cell[0].average_voltage,
            g_cell[1].average_voltage,
            g_cell[2].average_voltage,
-           g_cell[3].average_voltage,
-           g_cell[4].average_voltage,
-           g_cell[5].average_voltage,
+           g_cell[3].average_voltage);
+    printf("\n\rUpper:\t%Lu\t%Lu\t%Lu\t%Lu",
            g_cell[12].average_voltage,
            g_cell[13].average_voltage,
            g_cell[14].average_voltage,
-           g_cell[15].average_voltage,
-           g_cell[16].average_voltage,
-           g_cell[17].average_voltage);
+           g_cell[15].average_voltage);
 }
 
 // Set up timer 2 as a millisecond timer
@@ -131,7 +128,16 @@ void main()
     {
         ltc6804_read_cell_voltages(g_cell);
         print_cell_voltages();
-        delay_ms(100);
+        delay_ms(20);
+        
+        output_low(CSBI);
+        ltc6804_write_config(0x0FFF,0x0FFF);
+        output_high(CSBI);
+        delay_ms(20);
+        output_low(CSBI);
+        ltc6804_write_config(0x0000,0x0000);
+        output_high(CSBI);
+        delay_ms(20);
     }
 }
 

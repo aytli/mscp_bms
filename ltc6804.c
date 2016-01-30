@@ -27,7 +27,7 @@
 #define ADCV    0x0370 // Datasheet page 53
 
 // LTC6804 configuration bytes (bytes 4 and 5 used for charging/discharging)
-#define CFGR0   0x08   // VREFON = 1, ADCOPT = 0
+#define CFGR0   0x00   // VREFON = 1, ADCOPT = 0
 #define CFGR1   0xD6   // Undervoltage = 2.80V (0x6D6)
 #define CFGR2   0x06   // Overvoltage lower nibble + undervoltage upper nibble
 #define CFGR3   0xA4   // Overvoltage  = 4.20V (0xA40)
@@ -37,6 +37,9 @@
 
 // Number of samples for moving average
 #define N_SAMPLES  10
+
+static int16 g_discharge1;
+static int16 g_discharge2;
 
 // Struct for a cell
 typedef struct
@@ -54,10 +57,13 @@ typedef struct
 // Function prototypes
 void ltc6804_wakeup(void);
 void ltc6804_write_command(unsigned int16);
-void ltc6804_write_config(int16);
+void ltc6804_write_config(int16,int16);
 void ltc6804_init(void);
 void ltc6804_read_cell_voltages(cell_t *);
 void ltc6804_read_voltage_flags(cell_t *);
+void ltc6804_start_discharge(int8 cell);
+void ltc6804_stop_discharge(int8 cell);
+void ltc6804_stop_all_discharge(void);
 
 void ltc6804_wakeup(void)
 {
@@ -85,35 +91,55 @@ void ltc6804_write_command(unsigned int16 command)
 }
 
 // Sends two bytes of config data to LTC-1
-void ltc6804_write_config(int16 data)
+void ltc6804_write_config(int16 data2, int16 data1)
 {
     char bytes[6];
-    unsigned int16 crc;
+    unsigned int16 crc2,crc1;
     bytes[0] = CFGR0;
     bytes[1] = CFGR1;
     bytes[2] = CFGR2;
     bytes[3] = CFGR3;
-    bytes[4] = data&0x00FF;
-    bytes[5] = (data&0xFF00)>>8;
-    crc = pec15(bytes,6);
-
+    bytes[4] = data2&0x00FF;
+    bytes[5] = (data2&0xFF00)>>8;
+    crc2 = pec15(bytes,6);
+    
+    bytes[0] = CFGR0;
+    bytes[1] = CFGR1;
+    bytes[2] = CFGR2;
+    bytes[3] = CFGR3;
+    bytes[4] = data1&0x00FF;
+    bytes[5] = (data1&0xFF00)>>8;
+    crc1 = pec15(bytes,6);
+    
     ltc6804_write_command(WRCFG);
+    
     spi_write(CFGR0);
     spi_write(CFGR1);
     spi_write(CFGR2);
     spi_write(CFGR3);
-    spi_write(data&0x00FF);
-    spi_write((data&0xFF00)>>8);
-    spi_write((crc&0xFF00)>>8);
-    spi_write(crc&0x00FF);
+    spi_write(data2&0x00FF);
+    spi_write((data2&0xFF00)>>8);
+    spi_write((crc2&0xFF00)>>8);
+    spi_write(crc2&0x00FF);
+    
+    spi_write(CFGR0);
+    spi_write(CFGR1);
+    spi_write(CFGR2);
+    spi_write(CFGR3);
+    spi_write(data1&0x00FF);
+    spi_write((data1&0xFF00)>>8);
+    spi_write((crc1&0xFF00)>>8);
+    spi_write(crc1&0x00FF);
 }
 
 // Sends configuration bytes to LTC-1 and LTC-2
 void ltc6804_init(void)
 {
+    g_discharge2 = 0x0000;
+    g_discharge1 = 0x0000;
+    
     output_low(CSBI);
-    ltc6804_write_config(0x0000);
-    ltc6804_write_config(0x0000);
+    ltc6804_write_config(g_discharge2,g_discharge1);
     output_high(CSBI);
 }
 
@@ -132,7 +158,10 @@ void ltc6804_read_cell_voltages(cell_t * cell)
     
     output_low(CSBI);
     
-    ltc6804_write_command(RDCVA); // voltage data for cells 1-3
+    // Read from cell voltage register A
+    ltc6804_write_command(RDCVA);
+    
+    // Read data for cells 0-2 from LTC-1
     for (i = 0 ; i < 3 ; i ++)
     {
         lsb = spi_read(0xFF);
@@ -142,6 +171,7 @@ void ltc6804_read_cell_voltages(cell_t * cell)
     spi_read(0xFF); // PEC1
     spi_read(0xFF); // PEC2
     
+    // Read data for cells 12-14 from LTC-2
     for (i = 12 ; i < 15 ; i ++)
     {
         lsb = spi_read(0xFF);
@@ -152,10 +182,13 @@ void ltc6804_read_cell_voltages(cell_t * cell)
     spi_read(0xFF); // PEC2
     
     output_high(CSBI);
-    delay_us(10);
+    delay_us(100);
     output_low(CSBI);
     
-    ltc6804_write_command(RDCVB); // voltage data for cells 4-6
+    // Read from cell voltage register B
+    ltc6804_write_command(RDCVB);
+    
+    // Read data for cells 3-5 from LTC-1
     for (i = 3 ; i < 6 ; i ++)
     {
         lsb = spi_read(0xFF);
@@ -165,6 +198,7 @@ void ltc6804_read_cell_voltages(cell_t * cell)
     spi_read(0xFF); // PEC1
     spi_read(0xFF); // PEC2
     
+    // Read data for cells 15-17 from LTC-1
     for (i = 15 ; i < 18 ; i ++)
     {
         lsb = spi_read(0xFF);
@@ -214,6 +248,62 @@ void ltc6804_read_voltage_flags(cell_t * cell)
     spi_read(0xFF); // PEC 2
     
     output_high(CSBI);
+}
+
+// Starts discharge for a cell
+// Receives the index of the cell (from 0 to 23)
+void ltc6804_start_discharge(int8 cell)
+{
+    if (cell <= 11)
+    {
+        // Cell is in LTC-1
+        g_discharge1 |= 1 << cell;
+    }
+    else if (cell <= 23)
+    {
+        // Cell is in LTC-2
+        g_discharge2 |= 1 << (cell-12);
+    }
+    else
+    {
+        // Cell is out of range, do not send anything
+        return;
+    }
+    
+    output_low(CSBI);
+    ltc6804_write_config(g_discharge2,g_discharge1);
+    output_high(CSBI);
+}
+
+// Stops discharge for a cell
+// Receives the index of the cell (from 0 to 23)
+void ltc6804_stop_discharge(int8 cell)
+{
+    if (cell <= 11)
+    {
+        // Cell is in LTC-1
+        g_discharge1 &= ~(1 << cell);
+    }
+    else if (cell <= 23)
+    {
+        // Cell is in LTC-2
+        g_discharge2 &= ~(1 << (cell-12));
+    }
+    else
+    {
+        // Cell is out of range, do not send anything
+        return;
+    }
+    
+    output_low(CSBI);
+    ltc6804_write_config(g_discharge2,g_discharge1);
+    output_high(CSBI);
+}
+
+// Stops discharge for all cells
+void ltc6804_stop_all_discharge(void)
+{
+    ltc6804_init();
 }
 
 #endif
