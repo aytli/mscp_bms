@@ -1,8 +1,6 @@
 #ifndef ADC_C
 #define ADC_C
 
-#define CSBI2 PIN_B12 // ADS7952 chip select, active low
-
 #define N_ADC_CHANNELS      24
 #define LSBS_PER_VOLT       819.2
 #define THERMISTOR_NOMINAL  10000.0
