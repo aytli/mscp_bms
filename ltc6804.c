@@ -170,7 +170,7 @@ void ltc6804_read_cell_voltages(cell_t * cell)
     }
     spi_read(0xFF); // PEC1
     spi_read(0xFF); // PEC2
-    
+
     // Read data for cells 12-14 from LTC-2
     for (i = 12 ; i < 15 ; i ++)
     {
@@ -182,7 +182,7 @@ void ltc6804_read_cell_voltages(cell_t * cell)
     spi_read(0xFF); // PEC2
     
     output_high(CSBI);
-    delay_us(100);
+    delay_us(10);
     output_low(CSBI);
     
     // Read from cell voltage register B

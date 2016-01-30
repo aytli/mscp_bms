@@ -5,6 +5,7 @@
 
 // Includes
 #include "main.h"
+#include "math.h"
 #include "pec.c"
 #include "ltc6804.c"
 #include "adc.c"
@@ -20,9 +21,11 @@
 // Macros to disable timers and clear flags
 #define CLEAR_T2_FLAG IFS0  &= 0xFF7F
 
-static cell_t g_cell[N_CELLS];
-static int    g_highest_voltage_cell_index;
-static int    g_lowest_voltage_cell_index;
+static cell_t         g_cell[N_CELLS];
+static unsigned int16 g_adc_data[N_ADC_CHANNELS];
+static float          g_temps[N_ADC_CHANNELS];
+static int            g_highest_voltage_cell_index;
+static int            g_lowest_voltage_cell_index;
 
 // Initializes the cells, clears all flags, resets highest and lowest cells
 void init_cells(void)
@@ -67,6 +70,34 @@ int get_lowest_voltage_cell_index(void)
     return lowest;
 }
 
+// Use the simplified Steinhart-Hart equation to approximate temperatures
+void convert_adc_data_to_temps(void)
+{
+   int i;
+   for (i = 0; i < N_ADC_CHANNELS; i++)
+   {
+      float resistance = THERMISTOR_SERIES * (float)g_adc_data[i] / 
+         (LSBS_PER_VOLT * THERMISTOR_SUPPLY - (float)g_adc_data[i]);
+      float temperature = resistance / THERMISTOR_NOMINAL;
+      temperature = log(temperature);
+      temperature /= B_COEFF;
+      temperature += 1.0 / (TEMPERATURE_NOMINAL + 273.15);
+      temperature = 1.0 / temperature;
+      temperature -= 273.15;
+      g_temps[i] = temperature;
+   }
+}
+
+void print_temperatures(void)
+{
+   int i;
+   for (i = 0; i < N_ADC_CHANNELS; i++)
+   {
+      printf("temp[%d] = %f\r\n", i, g_temps[i]);
+   }
+   printf("\n");
+}
+
 void print_cell_voltages(void)
 {
     int i,j;
@@ -84,7 +115,7 @@ void print_cell_voltages(void)
         g_cell[i].samples[N_SAMPLES-1] = g_cell[i].voltage;
         g_cell[i].average_voltage = (unsigned int16) (sum/N_SAMPLES);
     }
-    
+
     printf("\n\n\n\n\n\n\rLower:\t%Lu\t%Lu\t%Lu\t%Lu",
            g_cell[0].average_voltage,
            g_cell[1].average_voltage,
@@ -98,11 +129,11 @@ void print_cell_voltages(void)
 }
 
 // Set up timer 2 as a millisecond timer
-int16 ms;
+int16 g_ms;
 #int_timer2 level = 4
 void isr_timer2(void)
 {
-    ms++; //keep a running timer interupt that increments every milli-second
+    g_ms++; //keep a running timer interupt that increments every milli-second
     CLEAR_T2_FLAG;
 }
 
@@ -123,7 +154,8 @@ void main()
     // Send ADCV Command
     ltc6804_wakeup();
     ltc6804_init();
-    
+    ads7952_init();   
+
     while (true)
     {
         ltc6804_read_cell_voltages(g_cell);
