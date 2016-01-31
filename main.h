@@ -16,7 +16,8 @@
 #pin_select SDI1     = PIN_B0  // MISO
 #pin_select SDO1     = PIN_B1  // MOSI
 #pin_select SCK1OUT  = PIN_B2  // SCK
-#define     CSBI       PIN_B3  // LTC chip select, active low
+#define     CSBI1      PIN_B3  // LTC-1 chip select, active low
+#define     CSBI2      PIN_B4  // LTC-2 chip select, active low
 
 // SPI port 2: ADS7952
 #pin_select SDI2     = PIN_B15 // MISO

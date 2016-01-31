@@ -140,6 +140,7 @@ void isr_timer2(void)
 // Main
 void main()
 {
+    int data[8];
     // Set up and enable timer 2 to interrupt every 1ms using 20MHz clock
     setup_timer2(TMR_INTERNAL|TMR_DIV_BY_256,39);
     enable_interrupts(INT_TIMER2);
@@ -151,24 +152,41 @@ void main()
     init_PEC15_Table();
     init_cells();
     
-    // Send ADCV Command
     ltc6804_wakeup();
     ltc6804_init();
-    ads7952_init();   
+    //ads7952_init();
 
     while (true)
     {
         ltc6804_read_cell_voltages(g_cell);
         print_cell_voltages();
-        delay_ms(20);
         
-        output_low(CSBI);
-        ltc6804_write_config(0x0FFF,0x0FFF);
-        output_high(CSBI);
-        delay_ms(20);
-        output_low(CSBI);
-        ltc6804_write_config(0x0000,0x0000);
-        output_high(CSBI);
+        /*output_low(CSBI2);
+        ltc6804_write_command(ADCV);
+        output_high(CSBI2);
+        
+        delay_us(500);
+        
+        output_low(CSBI2);
+        ltc6804_write_command(RDCVA);
+        
+        data[0] = spi_read(0xFF);
+        data[1] = spi_read(0xFF);
+        
+        data[2] = spi_read(0xFF);
+        data[3] = spi_read(0xFF);
+        
+        data[4] = spi_read(0xFF);
+        data[5] = spi_read(0xFF);
+        
+        data[6] = spi_read(0xFF);
+        data[7] = spi_read(0xFF);
+        
+        output_high(CSBI2);
+        
+        printf("\n\n\n\n\n\n\rLower:\t%Lu\t%Lu\t%Lu\t%Lu\t%Lu\t%Lu\t%Lu\t%Lu",
+            data[0],data[1],data[2],data[3],data[4],data[5],data[6],data[7]);*/
+        
         delay_ms(20);
     }
 }
