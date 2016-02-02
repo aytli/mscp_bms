@@ -93,6 +93,22 @@ void ltc6804_write_command(unsigned int16 command)
     spi_write(crc&0x00FF);
 }
 
+// Sends an 11 bit (2 bytes) command to LTC-1
+void ltc6804_write_command2(unsigned int16 command)
+{
+    char bytes[2];
+    unsigned int16 crc;
+    bytes[0] = (command&(0xFF00))>>8;
+    bytes[1] = command&(0x00FF);
+    crc = pec15(bytes,2);
+    
+    spi_write2((command&(0xFF00))>>8);
+    spi_write2(command&(0x00FF));
+    spi_write2((crc&0xFF00)>>8);
+    spi_write2(crc&0x00FF);
+}
+
+
 // Sends two bytes of config data to LTC-1
 void ltc6804_write_config(int16 data)
 {

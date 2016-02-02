@@ -17,14 +17,19 @@
 #pin_select SDO1     = PIN_B1  // MOSI
 #pin_select SCK1OUT  = PIN_B2  // SCK
 #define     CSBI1      PIN_B3  // LTC-1 chip select, active low
-#define     CSBI2      PIN_B4  // LTC-2 chip select, active low
+//#define     CSBI2      PIN_B4  // LTC-2 chip select, active low
+
+#pin_select SDI2     = PIN_B15  // MISO
+#pin_select SDO2     = PIN_B14  // MOSI
+#pin_select SCK2OUT  = PIN_B13  // SCK
+#define     CSBI2      PIN_B12  // LTC-1 chip select, active low
 
 // SPI port 2: ADS7952
-#pin_select SDI2     = PIN_B15 // MISO
-#pin_select SDO2     = PIN_B14 // MOSI
-#pin_select SCK2OUT  = PIN_B13 // SCK
-#define     ADC1_SEL   PIN_B12 // ADC-1, cells 1-12
-#define     ADC2_SEL   PIN_B13 // ADC-2, cells 13-24
+//#pin_select SDI2     = PIN_B15 // MISO
+//#pin_select SDO2     = PIN_B14 // MOSI
+//#pin_select SCK2OUT  = PIN_B13 // SCK
+//#define     ADC1_SEL   PIN_B12 // ADC-1, cells 1-12
+//#define     ADC2_SEL   PIN_B13 // ADC-2, cells 13-24
 
 // Miscellaneous pins
 #define HEARTBEAT_LED1 PIN_A4 // Hearbeat and diagnostic LED

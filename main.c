@@ -158,34 +158,50 @@ void main()
 
     while (true)
     {
-        ltc6804_read_cell_voltages(g_cell);
-        print_cell_voltages();
+        //ltc6804_read_cell_voltages(g_cell);
         
-        /*output_low(CSBI2);
+        output_low(CSBI1);
         ltc6804_write_command(ADCV);
+        output_high(CSBI1);
+        
+        delay_us(500);
+        
+        output_low(CSBI1);
+        ltc6804_write_command(RDCVA);
+        data[0] = spi_read(0xFF);
+        data[1] = spi_read(0xFF);
+        data[2] = spi_read(0xFF);
+        data[3] = spi_read(0xFF);
+        data[4] = spi_read(0xFF);
+        data[5] = spi_read(0xFF);
+        data[6] = spi_read(0xFF);
+        data[7] = spi_read(0xFF);
+        output_high(CSBI1);
+        printf("\n\n\n\n\n\n\rUpper:\t%X\t%X\t%X\t%X\t%X\t%X\t%X\t%X",
+            data[0],data[1],data[2],data[3],data[4],data[5],data[6],data[7]);
+        
+        
+        output_low(CSBI2);
+        ltc6804_write_command2(ADCV);
         output_high(CSBI2);
         
         delay_us(500);
         
         output_low(CSBI2);
-        ltc6804_write_command(RDCVA);
-        
-        data[0] = spi_read(0xFF);
-        data[1] = spi_read(0xFF);
-        
-        data[2] = spi_read(0xFF);
-        data[3] = spi_read(0xFF);
-        
-        data[4] = spi_read(0xFF);
-        data[5] = spi_read(0xFF);
-        
-        data[6] = spi_read(0xFF);
-        data[7] = spi_read(0xFF);
-        
+        ltc6804_write_command2(RDCVA);
+        data[0] = spi_read2(0xFF);
+        data[1] = spi_read2(0xFF);
+        data[2] = spi_read2(0xFF);
+        data[3] = spi_read2(0xFF);
+        data[4] = spi_read2(0xFF);
+        data[5] = spi_read2(0xFF);
+        data[6] = spi_read2(0xFF);
+        data[7] = spi_read2(0xFF);
         output_high(CSBI2);
-        
-        printf("\n\n\n\n\n\n\rLower:\t%Lu\t%Lu\t%Lu\t%Lu\t%Lu\t%Lu\t%Lu\t%Lu",
-            data[0],data[1],data[2],data[3],data[4],data[5],data[6],data[7]);*/
+        printf("\n\rLower:\t%X\t%X\t%X\t%X\t%X\t%X\t%X\t%X",
+            data[0],data[1],data[2],data[3],data[4],data[5],data[6],data[7]);
+            
+        //print_cell_voltages();
         
         delay_ms(20);
     }
