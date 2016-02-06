@@ -91,11 +91,11 @@ void convert_adc_data_to_temps(void)
 void print_temperatures(void)
 {
    int i;
-   for (i = 0; i < N_ADC_CHANNELS; i++)
+   for (i = 0; i < N_ADC_CHANNELS;; i++)
    {
-      printf("temp[%d] = %f\r\n", i, g_temps[i]);
+      printf("temp[%d] = %d\r\n", i, (int)(g_temps[i] * 10));
    }
-   printf("\n");
+   printf("\r\n");
 }
 
 void print_cell_voltages(void)
