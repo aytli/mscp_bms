@@ -38,6 +38,9 @@
 // Number of samples for moving average
 #define N_SAMPLES  10
 
+// Voltage threshold for balancing to occur (BALANCE_THRESHOLD / 100) V
+#define BALANCE_THRESHOLD 140
+
 static int16 g_discharge1;
 static int16 g_discharge2;
 

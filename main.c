@@ -64,7 +64,10 @@ int get_highest_voltage_cell_index(void)
 int get_lowest_voltage_cell_index(void)
 {
     int i, lowest = 0;
-    for (i = 0 ; i < N_CELLS ; i++)
+    for (i = 0 ; i <= 3 ; i++)
+        if (g_cell[i].voltage <= g_cell[lowest].voltage)
+            lowest = i;
+    for (i = 12 ; i <= 15 ; i++)
         if (g_cell[i].voltage <= g_cell[lowest].voltage)
             lowest = i;
     return lowest;
@@ -91,7 +94,7 @@ void convert_adc_data_to_temps(void)
 void print_temperatures(void)
 {
    int i;
-   for (i = 0; i < N_ADC_CHANNELS;; i++)
+   for (i = 0; i < N_ADC_CHANNELS; i++)
    {
       printf("temp[%d] = %d\r\n", i, (int)(g_temps[i] * 10));
    }
@@ -137,6 +140,49 @@ void isr_timer2(void)
     CLEAR_T2_FLAG;
 }
 
+// Discharge all the cells that are 1% of the SoC range voltage higher than
+// the lowest voltage
+void balance()
+{
+    ltc6804_read_cell_voltages(g_cell);
+    int min_idx = get_lowest_voltage_cell_index();
+    int i;
+
+    for (i = 0; i <= 3; i++)
+    {
+        if ((g_cell[i].average_voltage - g_cell[min_idx].average_voltage)
+            > BALANCE_THRESHOLD)
+        {
+            g_discharge1 |= 1 << i;
+        }
+        else
+        {
+            g_discharge1 &= ~(1 << i);
+        }
+    }
+
+    for (i = 12; i <= 15; i++)
+    {
+        if ((g_cell[i].average_voltage - g_cell[min_idx].average_voltage)
+            > BALANCE_THRESHOLD)
+        {
+            g_discharge2 |= 1 << (i - 12);
+        }
+        else
+        {
+            g_discharge2 &= ~(1 << (i - 12));
+        }
+    }
+
+    output_low(CSBI1);
+    ltc6804_write_config(g_discharge1);
+    output_high(CSBI1);
+
+    output_low(CSBI2);
+    ltc6804_write_config(g_discharge1);
+    output_high(CSBI2);
+}
+
 // Main
 void main()
 {
@@ -160,6 +206,8 @@ void main()
     {
         ltc6804_read_cell_voltages(g_cell);
         print_cell_voltages();
+
+        balance();
         
         /*output_low(CSBI2);
         ltc6804_write_command(ADCV);
@@ -187,7 +235,7 @@ void main()
         printf("\n\n\n\n\n\n\rLower:\t%Lu\t%Lu\t%Lu\t%Lu\t%Lu\t%Lu\t%Lu\t%Lu",
             data[0],data[1],data[2],data[3],data[4],data[5],data[6],data[7]);*/
         
-        delay_ms(20);
+        delay_ms(200);
     }
 }
 
