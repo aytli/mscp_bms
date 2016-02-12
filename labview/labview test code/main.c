@@ -13,6 +13,11 @@ void main()
 
     while(true)
     {
+        putc(0x5A);
+        output_high(HEARTBEAT);
+        output_low(HEARTBEAT);
+        delay_ms(10);
+        
         for (i = 0 ; i < 10 ; i++)
         {
             putc(n);
@@ -27,10 +32,5 @@ void main()
         {
             n = 33;
         }
-        
-        putc(0xFF);
-        output_high(HEARTBEAT);
-        output_low(HEARTBEAT);
-        delay_ms(10);
     }
 }
