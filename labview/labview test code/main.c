@@ -1,6 +1,8 @@
 #include <main.h>
 
-#define HEARTBEAT PIN_A0
+#define HEARTBEAT   PIN_A0
+#define VOLTAGE_ID  0x5A
+#define TEMP_ID     0x69
 
 void main()
 {
@@ -14,45 +16,20 @@ void main()
 
     while(true)
     {
-        putc(0x5A);
-        output_high(HEARTBEAT);
-        output_low(HEARTBEAT);
-        delay_ms(10);
-        
+        delay_ms(200);
+        putc(VOLTAGE_ID);
         for (i = 0 ; i < 10 ; i++)
         {
             putc(n);
-            delay_ms(10);
         }
+        (n < 90) ? (n++) : (n=65);
         
-        if (n < 90)
-        {
-            n++;
-        }
-        else
-        {
-            n = 65;
-        }
-        
-        
-        putc(0x69);
-        output_high(HEARTBEAT);
-        output_low(HEARTBEAT);
-        delay_ms(10);
-        
+        delay_ms(200);
+        putc(TEMP_ID);
         for (i = 0 ; i < 10 ; i++)
         {
             putc(m);
-            delay_ms(10);
         }
-        
-        if (m < 122)
-        {
-            m++;
-        }
-        else
-        {
-            m = 97;
-        }
+        (m < 122) ? (m++) : (m=97);
     }
 }
