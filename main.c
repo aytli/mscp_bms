@@ -27,6 +27,15 @@ static float          g_temps[N_ADC_CHANNELS];
 static int            g_highest_voltage_cell_index;
 static int            g_lowest_voltage_cell_index;
 
+typedef struct {
+    int16 voltages[N_CELLS_FINAL];
+    int8 temps[N_ADC_CHANNELS];
+    int16 current;
+    int32 discharge;
+} bms_page_t;
+
+bms_page_t g_bms_page;
+
 // Initializes the cells, clears all flags, resets highest and lowest cells
 void init_cells(void)
 {
@@ -91,6 +100,22 @@ void convert_adc_data_to_temps(void)
    }
 }
 
+// Debug code, remove later
+void print_discharge_bits(void)
+{
+    int i;
+    for (i = 0; i < 16; i++)
+    {
+        printf("%c", (g_discharge1 >> i) & 1 ? '1' : '0');
+    }
+    printf("\r\n");
+    for (i = 0; i < 16; i++)
+    {
+        printf("%c", (g_discharge2 >> i) & 1 ? '1' : '0');
+    }
+    printf("\r\n");
+}
+
 void print_temperatures(void)
 {
    int i;
@@ -129,6 +154,8 @@ void print_cell_voltages(void)
            g_cell[13].average_voltage,
            g_cell[14].average_voltage,
            g_cell[15].average_voltage);
+           
+    printf("\n\r");
 }
 
 // Set up timer 2 as a millisecond timer
@@ -138,6 +165,32 @@ void isr_timer2(void)
 {
     g_ms++; //keep a running timer interupt that increments every milli-second
     CLEAR_T2_FLAG;
+}
+
+void update_bms_page()
+{
+    int i;
+    for (i = 0; (i < N_CELLS) && (i < N_CELLS_FINAL); i++)
+    {
+        g_bms_page.voltages[i] = g_cell[i].average_voltage;
+    }
+    for (i = 0; i < N_ADC_CHANNELS; i++)
+    {
+        g_bms_page.temps[i] = (int8)g_temps[i];
+    }
+    // Placeholder, we don't have current measurement yet
+    g_bms_page.current = 0;
+    // For the prototype we only have 8 cells
+    g_bms_page.discharge = ((g_discharge2 & 0xF) << 4) | (g_discharge1 & 0xF);
+}
+
+void transmit_bms_page()
+{
+   int i;
+   for (i = 0; i < sizeof(bms_page_t); i++)
+   {
+        printf("%c", *(((int8*)(&g_bms_page)) + i));
+   }
 }
 
 // Discharge all the cells that are 1% of the SoC range voltage higher than
@@ -205,9 +258,12 @@ void main()
     while (true)
     {
         ltc6804_read_cell_voltages(g_cell);
-        print_cell_voltages();
+        // print_cell_voltages();
 
         balance();
+        // print_discharge_bits();
+        update_bms_page();
+        transmit_bms_page();
         
         /*output_low(CSBI2);
         ltc6804_write_command(ADCV);

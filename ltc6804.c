@@ -33,7 +33,8 @@
 #define CFGR3   0xA4   // Overvoltage  = 4.20V (0xA40)
 
 // Number of channels on the LTC6804, and number of channels being used
-#define N_CELLS 24     // The LTC6804 can monitor up to 12 cells
+#define N_CELLS 24       // The LTC6804 can monitor up to 12 cells
+#define N_CELLS_FINAL 30 // The number of cells in the final pack
 
 // Number of samples for moving average
 #define N_SAMPLES  10
