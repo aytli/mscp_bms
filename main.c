@@ -74,10 +74,12 @@ int get_lowest_voltage_cell_index(void)
 {
     int i, lowest = 0;
     for (i = 0 ; i <= 3 ; i++)
-        if (g_cell[i].voltage <= g_cell[lowest].voltage)
+        if (g_cell[i].average_voltage 
+            <= g_cell[lowest].average_voltage)
             lowest = i;
     for (i = 12 ; i <= 15 ; i++)
-        if (g_cell[i].voltage <= g_cell[lowest].voltage)
+        if (g_cell[i].average_voltage 
+            <= g_cell[lowest].average_voltage)
             lowest = i;
     return lowest;
 }
@@ -261,9 +263,10 @@ void main()
         // print_cell_voltages();
 
         balance();
-        // print_discharge_bits();
+        print_cell_voltages();
+        print_discharge_bits();
         update_bms_page();
-        transmit_bms_page();
+        // transmit_bms_page();
         
         /*output_low(CSBI2);
         ltc6804_write_command(ADCV);
