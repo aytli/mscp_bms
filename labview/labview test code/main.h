@@ -1,5 +1,5 @@
 #include <18F26K80.h>
-#device adc=16
+#device adc=8
 
 #FUSES NOWDT                    //No Watch Dog Timer
 #FUSES SOSC_DIG                 //Digital mode, I/O port functionality of RC0 and RC1
