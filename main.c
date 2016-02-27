@@ -120,12 +120,13 @@ void print_discharge_bits(void)
 
 void print_temperatures(void)
 {
-   int i;
-   for (i = 0; i < N_ADC_CHANNELS; i++)
-   {
-      printf("temp[%d] = %d\r\n", i, (int)(g_temps[i] * 10));
-   }
-   printf("\r\n");
+//!   int i;
+//!   for (i = 0; i < N_ADC_CHANNELS; i++)
+//!   {
+//!      printf("temp[%d] = %d\r\n", i, (int)(g_temps[i] * 10));
+//!   }
+//!   printf("\r\n");
+   printf("temp[%d] = %d\r\n", 4, (int)(g_temps[4] * 10));
 }
 
 void print_cell_voltages(void)
@@ -265,6 +266,9 @@ void main()
         balance();
         print_cell_voltages();
         print_discharge_bits();
+        ads7952_read_all_channels(g_adc_data);
+        convert_adc_data_to_temps();
+        print_temperatures();
         update_bms_page();
         // transmit_bms_page();
         
