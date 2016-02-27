@@ -13,11 +13,12 @@
 #use rs232(baud = 57600, xmit = PIN_B8, rcv = PIN_B9)
 
 // SPI port 1: LTC6804-1
-#pin_select SDI1     = PIN_B0  // MISO
-#pin_select SDO1     = PIN_B1  // MOSI
-#pin_select SCK1OUT  = PIN_B2  // SCK
-#define     CSBI1      PIN_B3  // LTC-1 chip select, active low
-#define     CSBI2      PIN_B4  // LTC-2 chip select, active low
+#pin_select SDI1     = PIN_B0   // MISO
+#pin_select SDO1     = PIN_B1   // MOSI
+#pin_select SCK1OUT  = PIN_B2   // SCK
+#define     CSBI1      PIN_B3   // LTC-1 chip select, active low
+#define     CSBI2      PIN_B12  // LTC-2 chip select, active low
+#define     MOSI_SEL   PIN_B4   // Select between 2 MOSI lines
 
 // SPI port 2: ADS7952
 #pin_select SDI2     = PIN_B15 // MISO

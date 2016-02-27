@@ -33,10 +33,14 @@
 #define CFGR3   0xA4   // Overvoltage  = 4.20V (0xA40)
 
 // Number of channels on the LTC6804, and number of channels being used
-#define N_CELLS 24     // The LTC6804 can monitor up to 12 cells
+#define N_CELLS 24       // The LTC6804 can monitor up to 12 cells
+#define N_CELLS_FINAL 30 // The number of cells in the final pack
 
 // Number of samples for moving average
 #define N_SAMPLES  10
+
+// Voltage threshold for balancing to occur (BALANCE_THRESHOLD / 100) V
+#define BALANCE_THRESHOLD 140
 
 static int16 g_discharge1;
 static int16 g_discharge2;
@@ -148,6 +152,7 @@ void ltc6804_read_cell_voltages(cell_t * cell)
     delay_us(500);
     
     // Read data for cells 0-2 from LTC-1
+    output_low(MOSI_SEL);
     output_low(CSBI1);
     ltc6804_write_command(RDCVA);
     for (i = 0 ; i < 3 ; i ++)
@@ -155,10 +160,11 @@ void ltc6804_read_cell_voltages(cell_t * cell)
         lsb = spi_read(0xFF);
         msb = spi_read(0xFF);
         cell[i].voltage = (msb<<8)+lsb;
-    }
+    }    
     spi_read(0xFF); // PEC1
-    spi_read(0xFF); // PEC2
+    spi_read(0xFF); // PEC2    
     output_high(CSBI1);
+    output_high(MOSI_SEL);
     
     // Read data for cells 12-14 from LTC-2
     output_low(CSBI2);
@@ -176,6 +182,7 @@ void ltc6804_read_cell_voltages(cell_t * cell)
     delay_us(10);
     
     // Read data for cells 3-5 from LTC-1
+    output_low(MOSI_SEL);
     output_low(CSBI1);
     ltc6804_write_command(RDCVB);
     for (i = 3 ; i < 6 ; i ++)
@@ -183,10 +190,11 @@ void ltc6804_read_cell_voltages(cell_t * cell)
         lsb = spi_read(0xFF);
         msb = spi_read(0xFF);
         cell[i].voltage = (msb<<8)+lsb;
-    }
+    }    
     spi_read(0xFF); // PEC1
-    spi_read(0xFF); // PEC2
+    spi_read(0xFF); // PEC2    
     output_high(CSBI1);
+    output_high(MOSI_SEL);
     
     // Read data for cells 15-17 from LTC-1
     output_low(CSBI2);
