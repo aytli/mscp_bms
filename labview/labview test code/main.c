@@ -8,7 +8,7 @@
 void main()
 {
     int i = 0;
-    int n = 65;
+    int16 n = 27000;
     int m = 97;
     int pwm;
     setup_adc(ADC_CLOCK_INTERNAL);
@@ -19,22 +19,12 @@ void main()
     {
         delay_ms(200);
         putc(VOLTAGE_ID);
-        for (i = 0 ; i < 3 ; i++)
+        (n<42000) ? (n+=500) : (n=27000);
+        for (i = 0 ; i < 8 ; i++)
         {
-            putc(0x01);
-            putc(n+i);
+            putc((int8)(n>>8));
+            putc((int8)(n&0x00FF));
         }
-        for (i = 0 ; i < 3 ; i++)
-        {
-            putc(0x02);
-            putc(2*n+i);
-        }
-        for (i = 0 ; i < 3 ; i++)
-        {
-            putc(0x03);
-            putc(n+i);
-        }
-        (n < 90) ? (n++) : (n=65);
         
         delay_ms(200);
         putc(TEMP_ID);
