@@ -21,11 +21,16 @@
 // Macros to disable timers and clear flags
 #define CLEAR_T2_FLAG IFS0  &= 0xFF7F
 
-static cell_t         g_cell[N_CELLS];
-static unsigned int16 g_adc_data[N_ADC_CHANNELS];
-static float          g_temps[N_ADC_CHANNELS];
-static int            g_highest_voltage_cell_index;
-static int            g_lowest_voltage_cell_index;
+// Telemetry packet IDs
+#define VOLTAGE_ID  0x5A
+#define TEMP_ID     0x69
+#define BALANCE_ID  0x41
+
+static cell_t           g_cell[N_CELLS];
+static unsigned int16   g_adc_data[N_ADC_CHANNELS];
+static float            g_temps[N_ADC_CHANNELS];
+static int              g_highest_voltage_cell_index;
+static int              g_lowest_voltage_cell_index;
 
 typedef struct {
     int16 voltages[N_CELLS_FINAL];
@@ -129,38 +134,6 @@ void print_temperatures(void)
    printf("temp[%d] = %d\r\n", 4, (int)(g_temps[4] * 10));
 }
 
-void print_cell_voltages(void)
-{
-    int i,j;
-    unsigned int32 sum;
-    
-    for (i = 0 ; i < N_CELLS ; i++)
-    {
-        sum = 0;
-        for (j = 0 ; j < N_SAMPLES-1 ; j++)
-        {
-            sum += g_cell[i].samples[j];
-            g_cell[i].samples[j] = g_cell[i].samples[j+1];
-        }
-        sum += g_cell[i].voltage;
-        g_cell[i].samples[N_SAMPLES-1] = g_cell[i].voltage;
-        g_cell[i].average_voltage = (unsigned int16) (sum/N_SAMPLES);
-    }
-
-    printf("\n\n\n\n\n\n\rLower:\t%Lu\t%Lu\t%Lu\t%Lu",
-           g_cell[0].average_voltage,
-           g_cell[1].average_voltage,
-           g_cell[2].average_voltage,
-           g_cell[3].average_voltage);
-    printf("\n\rUpper:\t%Lu\t%Lu\t%Lu\t%Lu",
-           g_cell[12].average_voltage,
-           g_cell[13].average_voltage,
-           g_cell[14].average_voltage,
-           g_cell[15].average_voltage);
-           
-    printf("\n\r");
-}
-
 // Set up timer 2 as a millisecond timer
 int16 g_ms;
 #int_timer2 level = 4
@@ -198,7 +171,7 @@ void transmit_bms_page()
 
 // Discharge all the cells that are 1% of the SoC range voltage higher than
 // the lowest voltage
-void balance()
+void balance(void)
 {
     ltc6804_read_cell_voltages(g_cell);
     int min_idx = get_lowest_voltage_cell_index();
@@ -239,6 +212,51 @@ void balance()
     output_high(CSBI2);
 }
 
+void send_voltage_data(void)
+{
+    int i,j;
+    unsigned int32 sum;
+    for (i = 0 ; i < N_CELLS ; i++)
+    {
+        sum = 0;
+        for (j = 0 ; j < N_SAMPLES-1 ; j++)
+        {
+            sum += g_cell[i].samples[j];
+            g_cell[i].samples[j] = g_cell[i].samples[j+1];
+        }
+        sum += g_cell[i].voltage;
+        g_cell[i].samples[N_SAMPLES-1] = g_cell[i].voltage;
+        g_cell[i].average_voltage = (unsigned int16) (sum/N_SAMPLES);
+    }
+    
+    putc(VOLTAGE_ID);
+    for (i = 0 ; i < N_CELLS ; i ++)
+    {
+        putc((int8)(g_cell[i].average_voltage >> 8));
+        putc((int8)(g_cell[i].average_voltage & 0x00FF));
+    }
+}
+
+void send_temperature_data(void)
+{
+    int i;
+    putc(TEMP_ID);
+    for (i = 0 ; i < N_ADC_CHANNELS ; i++)
+    {
+        putc((unsigned int8)(g_temps[i]));
+    }
+}
+
+void send_balancing_bits(void)
+{
+    int32 discharge = (g_discharge1&0x0FFF)|((g_discharge2&0x0FFF)<<12);
+    putc(BALANCE_ID);
+    putc((int8)(discharge&0xFF));
+    putc((int8)(discharge>>8));
+    putc((int8)(discharge>>16));
+    putc((int8)(discharge>>24));
+}
+
 // Main
 void main()
 {
@@ -261,16 +279,24 @@ void main()
     while (true)
     {
         ltc6804_read_cell_voltages(g_cell);
-        // print_cell_voltages();
-
-        balance();
-        print_cell_voltages();
-        print_discharge_bits();
+        send_voltage_data();
+        delay_ms(10);
+        
         ads7952_read_all_channels(g_adc_data);
         convert_adc_data_to_temps();
-        print_temperatures();
-        update_bms_page();
-        // transmit_bms_page();
+        send_temperature_data();
+        delay_ms(10);
+        
+        send_balancing_bits();
+        delay_ms(10);
+
+        balance();
+        //print_cell_voltages();
+        //print_discharge_bits();
+        //convert_adc_data_to_temps();
+        //print_temperatures();
+        //update_bms_page();
+        //transmit_bms_page();
         
         /*output_low(CSBI2);
         ltc6804_write_command(ADCV);
