@@ -111,6 +111,7 @@ void convert_adc_data_to_temps(void)
 void print_discharge_bits(void)
 {
     int i;
+    int32 discharge = (g_discharge1&0x0FFF)|((int32)((g_discharge2&0x0FFF)<<12));
     for (i = 0; i < 16; i++)
     {
         printf("%c", (g_discharge1 >> i) & 1 ? '1' : '0');
@@ -119,6 +120,10 @@ void print_discharge_bits(void)
     for (i = 0; i < 16; i++)
     {
         printf("%c", (g_discharge2 >> i) & 1 ? '1' : '0');
+    }
+    for (i = 0; i < 32; i++)
+    {
+        printf("%c", (discharge >> i) & 1 ? '1' : '0');
     }
     printf("\r\n");
 }
@@ -208,7 +213,7 @@ void balance(void)
     output_high(CSBI1);
 
     output_low(CSBI2);
-    ltc6804_write_config(g_discharge1);
+    ltc6804_write_config(g_discharge2);
     output_high(CSBI2);
 }
 
@@ -249,12 +254,12 @@ void send_temperature_data(void)
 
 void send_balancing_bits(void)
 {
-    int32 discharge = (g_discharge1&0x0FFF)|((g_discharge2&0x0FFF)<<12);
+    int32 discharge = (g_discharge1&0x0FFF)|((int32)((g_discharge2&0x0FFF)<<12));
     putc(BALANCE_ID);
     putc((int8)(discharge&0xFF));
-    putc((int8)(discharge>>8));
-    putc((int8)(discharge>>16));
-    putc((int8)(discharge>>24));
+    putc((int8)((discharge>>8)&0xFF));
+    putc((int8)((discharge>>16)&0xFF));
+    putc((int8)((discharge>>24)&0xFF));
 }
 
 // Main
@@ -287,10 +292,12 @@ void main()
         send_temperature_data();
         delay_ms(10);
         
+        balance();
         send_balancing_bits();
         delay_ms(10);
-
-        balance();
+        
+        //print_discharge_bits();
+        
         //print_cell_voltages();
         //print_discharge_bits();
         //convert_adc_data_to_temps();
