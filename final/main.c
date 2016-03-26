@@ -23,6 +23,10 @@
 #define TEMP_ID     0x69
 #define BALANCE_ID  0x41
 
+// Kilovac control
+#define KILOVAC_ON  output_high(KVAC_PIN);
+#define KILOVAC_OFF output_low(KVAC_PIN);
+
 static cell_t         g_cell[N_CELLS];
 static unsigned int16 g_adc_data[N_ADC_CHANNELS];
 static float          g_temps[N_ADC_CHANNELS];

@@ -36,6 +36,7 @@
 #define LCD_SIG   PIN_E7  // LCD_SIG will be high when the LCD is enabled
 
 // Miscellaneous pins
-#define TEST_LED1 PIN_E2  // Hearbeat and diagnostic LED
-#define TEST_LED2 PIN_G13 // Hearbeat and diagnostic LED
+#define TEST_LED1 PIN_E2  // Test LED
+#define TEST_LED2 PIN_G13 // Test LED
+#define KVAC_PIN  PIN_A13 // Kilovac control pin
 #define FAN_PIN   PIN_D7  // Fan PWM signal
