@@ -25,6 +25,17 @@
 #define ADC1_SEL  PIN_B8  // ADC-1, thermistors 0-11
 #define ADC2_SEL  PIN_B9  // ADC-2, thermistors 12-23
 
+// LCD interface (4 bit mode)
+#define RS_PIN    PIN_C4
+#define RW_PIN    PIN_E4
+#define EN_PIN    PIN_C3
+#define D4_PIN    PIN_C2
+#define D5_PIN    PIN_C1
+#define D6_PIN    PIN_E6
+#define D7_PIN    PIN_E5
+#define LCD_SIG   PIN_E7  // LCD_SIG will be high when the LCD is enabled
+
 // Miscellaneous pins
-#define HEARTBEAT_LED1 PIN_E2  // Hearbeat and diagnostic LED
-#define HEARTBEAT_LED2 PIN_G13 // Hearbeat and diagnostic LED
+#define TEST_LED1 PIN_E2  // Hearbeat and diagnostic LED
+#define TEST_LED2 PIN_G13 // Hearbeat and diagnostic LED
+#define FAN_PIN   PIN_D7  // Fan PWM signal

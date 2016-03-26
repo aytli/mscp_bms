@@ -9,6 +9,8 @@
 #include "pec.c"
 #include "ltc6804.c"
 #include "adc.c"
+#include "fan.c"
+#include "lcd.c"
 
 // PIC internal register addresses
 #word IFS0 = 0x0084
@@ -225,7 +227,10 @@ void main()
     
     ltc6804_wakeup();
     ltc6804_init();
+    
     ads7952_init();
+    
+    fan_init();
 
     while (true)
     {

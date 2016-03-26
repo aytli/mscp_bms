@@ -5,16 +5,8 @@
 // #device PASS_STRINGS = IN_RAM
 // Source: https://www.ccsinfo.com/forum/viewtopic.php?t=44633
 
-// lcd interface (4 bit mode)
 // datasheet: http://www.kyocera-display.com/SiteImages/PartList/SPEC/51847ad%C3%A9%C3%A0.pdf
 // lcd interface tutorial: http://www.8051projects.net/lcd-interfacing/lcd-4-bit.php
-#define RS_PIN PIN_B0
-#define RW_PIN PIN_B1
-#define EN_PIN PIN_B2
-#define D4_PIN PIN_B15
-#define D5_PIN PIN_B14
-#define D6_PIN PIN_B13
-#define D7_PIN PIN_B12
 
 #define COMMAND_REG    0
 #define DATA_REG       1
