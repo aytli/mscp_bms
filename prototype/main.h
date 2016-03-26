@@ -30,3 +30,4 @@
 // Miscellaneous pins
 #define HEARTBEAT_LED1 PIN_A4 // Hearbeat and diagnostic LED
 #define HEARTBEAT_LED2 PIN_B5 // Hearbeat and diagnostic LED
+#define FAN_PIN        PIN_A4 // Fan PWM signal (LED on the prototype)

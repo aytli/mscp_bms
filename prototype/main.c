@@ -9,6 +9,7 @@
 #include "pec.c"
 #include "ltc6804.c"
 #include "adc.c"
+#include "fan.c"
 
 // PIC internal register addresses
 #word IFS0 = 0x0084
@@ -232,7 +233,8 @@ void main()
 {
     // Set up and enable timer 2 to interrupt every 1ms using 20MHz clock
     setup_timer2(TMR_INTERNAL|TMR_DIV_BY_256,39);
-    enable_interrupts(INT_TIMER2);
+    setup_timer3(TMR_INTERNAL|TMR_DIV_BY_256,39);
+    enable_interrupts(INT_TIMER2|INT_TIMER3);
 
     // Set up SPI ports
     setup_spi(SPI_MASTER|SPI_SCK_IDLE_HIGH|SPI_CLK_DIV_12|SPI_XMIT_L_TO_H);
@@ -243,11 +245,22 @@ void main()
     
     ltc6804_wakeup();
     ltc6804_init();
+    
     ads7952_init();
+    
+    fan_init();
 
     while (true)
     {
-        ltc6804_read_cell_voltages(g_cell);
+        fan_set_speed(FAN_OFF);
+        delay_ms(500);
+        fan_set_speed(FAN_LOW);
+        delay_ms(500);
+        fan_set_speed(FAN_HIGH);
+        delay_ms(500);
+        fan_set_speed(FAN_MAX);
+        delay_ms(500);
+        /*ltc6804_read_cell_voltages(g_cell);
         average_voltage();
         send_voltage_data();
         delay_ms(10);
@@ -260,7 +273,7 @@ void main()
         
         balance();
         send_balancing_bits();
-        delay_ms(200);
+        delay_ms(200);*/
     }
 }
 
