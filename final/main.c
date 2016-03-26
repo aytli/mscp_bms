@@ -136,7 +136,9 @@ void print_temperatures(void)
 //!      printf("temp[%d] = %d\r\n", i, (int)(g_temps[i] * 10));
 //!   }
 //!   printf("\r\n");
-   printf("temp[%d] = %d\r\n", 4, (int)(g_temps[4] * 10));
+    printf("temp[%d] = %d\t\t", 0, (int)(g_temps[0] * 10));
+    printf("temp[%d] = %d\t\t", 1, (int)(g_temps[1] * 10));
+    printf("temp[%d] = %d\r\n", 2, (int)(g_temps[2] * 10));
 }
 
 // Set up timer 2 as a millisecond timer
@@ -284,16 +286,17 @@ void main()
     while (true)
     {
         ltc6804_read_cell_voltages(g_cell);
-        send_voltage_data();
+        //send_voltage_data();
         delay_ms(10);
         
         ads7952_read_all_channels(g_adc_data);
         convert_adc_data_to_temps();
-        send_temperature_data();
+        //send_temperature_data();
+        print_temperatures();
         delay_ms(10);
         
         balance();
-        send_balancing_bits();
+        //send_balancing_bits();
         delay_ms(10);
         
         //print_discharge_bits();
