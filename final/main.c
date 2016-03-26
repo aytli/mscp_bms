@@ -235,6 +235,8 @@ void main()
     ads7952_init();
     
     fan_init();
+    
+    set_adc_channel(HALL_ADC_CHANNEL);
 
     while (true)
     {

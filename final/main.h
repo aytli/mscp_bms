@@ -35,6 +35,10 @@
 #define D7_PIN    PIN_E5
 #define LCD_SIG   PIN_E7  // LCD_SIG will be high when the LCD is enabled
 
+// Hall effect sensor
+#define HALL_PIN  PIN_E0
+#define HALL_TEMP PIN_E1
+
 // Miscellaneous pins
 #define TEST_LED1 PIN_E2  // Test LED
 #define TEST_LED2 PIN_G13 // Test LED
