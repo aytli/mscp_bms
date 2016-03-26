@@ -36,7 +36,8 @@ void ads7952_read_all_channels(unsigned int16* buf)
 {
     int i;
     int ch;
-    int msb, lsb;
+    int msb;
+    int lsb;
     
     for (i = 0 ; i < 12 ; i ++)
     {

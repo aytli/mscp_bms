@@ -34,13 +34,21 @@
 
 // Number of channels on the LTC6804, and number of channels being used
 #define N_CELLS 24       // The LTC6804 can monitor up to 12 cells
-#define N_CELLS_FINAL 30 // The number of cells in the final pack
 
 // Number of samples for moving average
 #define N_SAMPLES  10
 
+// Number of consecutive errors required to trip
+#define N_ERRORS 10
+
 // Voltage threshold for balancing to occur (BALANCE_THRESHOLD / 100) V
 #define BALANCE_THRESHOLD 140
+
+#define SELECT_LTC_1        \
+    output_low(MOSI_SEL);
+
+#define SELECT_LTC_2        \
+    output_high(MOSI_SEL);
 
 static int16 g_discharge1;
 static int16 g_discharge2;
@@ -51,11 +59,9 @@ typedef struct
     unsigned int16 voltage; // LTC6804 has a 16 bit voltage ADC
     unsigned int16 average_voltage;
     unsigned int16 samples[N_SAMPLES];
-    int8 temperature;
-    int8 ov_flag;
-    int8 uv_flag;
-    int8 ot_flag;
-    int16 discharge;
+    int8 ov_flag[N_ERRORS];
+    int8 uv_flag[N_ERRORS];
+    int8 ot_flag[N_ERRORS];
 } cell_t;
 
 // Function prototypes
@@ -64,10 +70,6 @@ void ltc6804_write_command(unsigned int16);
 void ltc6804_write_config(int16,int16);
 void ltc6804_init(void);
 void ltc6804_read_cell_voltages(cell_t *);
-void ltc6804_read_voltage_flags(cell_t *);
-void ltc6804_start_discharge(int8 cell);
-void ltc6804_stop_discharge(int8 cell);
-void ltc6804_stop_all_discharge(void);
 
 void ltc6804_wakeup(void)
 {
@@ -90,7 +92,6 @@ void ltc6804_write_command(unsigned int16 command)
     bytes[0] = (command&(0xFF00))>>8;
     bytes[1] = command&(0x00FF);
     crc = pec15(bytes,2);
-    
     spi_write((command&(0xFF00))>>8);
     spi_write(command&(0x00FF));
     spi_write((crc&0xFF00)>>8);
@@ -138,7 +139,9 @@ void ltc6804_init(void)
 // Receives a pointer to an array of cells, writes the cell voltage to each one
 void ltc6804_read_cell_voltages(cell_t * cell)
 {
-    int i, msb, lsb;
+    int i;
+    int msb;
+    int lsb;
     
     // Start the cell voltage adc conversion
     output_low(CSBI1);
@@ -152,7 +155,7 @@ void ltc6804_read_cell_voltages(cell_t * cell)
     delay_us(500);
     
     // Read data for cells 0-2 from LTC-1
-    output_low(MOSI_SEL);
+    SELECT_LTC_1;
     output_low(CSBI1);
     ltc6804_write_command(RDCVA);
     for (i = 0 ; i < 3 ; i ++)
@@ -164,9 +167,22 @@ void ltc6804_read_cell_voltages(cell_t * cell)
     spi_read(0xFF); // PEC1
     spi_read(0xFF); // PEC2    
     output_high(CSBI1);
-    output_high(MOSI_SEL);
+    
+    // Read data for cells 3-5 from LTC-1
+    output_low(CSBI1);
+    ltc6804_write_command(RDCVB);
+    for (i = 3 ; i < 6 ; i ++)
+    {
+        lsb = spi_read(0xFF);
+        msb = spi_read(0xFF);
+        cell[i].voltage = (msb<<8)+lsb;
+    }    
+    spi_read(0xFF); // PEC1
+    spi_read(0xFF); // PEC2    
+    output_high(CSBI1);
     
     // Read data for cells 12-14 from LTC-2
+    SELECT_LTC_2;
     output_low(CSBI2);
     ltc6804_write_command(RDCVA);
     for (i = 12 ; i < 15 ; i ++)
@@ -179,24 +195,7 @@ void ltc6804_read_cell_voltages(cell_t * cell)
     spi_read(0xFF); // PEC2
     output_high(CSBI2);
     
-    delay_us(10);
-    
-    // Read data for cells 3-5 from LTC-1
-    output_low(MOSI_SEL);
-    output_low(CSBI1);
-    ltc6804_write_command(RDCVB);
-    for (i = 3 ; i < 6 ; i ++)
-    {
-        lsb = spi_read(0xFF);
-        msb = spi_read(0xFF);
-        cell[i].voltage = (msb<<8)+lsb;
-    }    
-    spi_read(0xFF); // PEC1
-    spi_read(0xFF); // PEC2    
-    output_high(CSBI1);
-    output_high(MOSI_SEL);
-    
-    // Read data for cells 15-17 from LTC-1
+    // Read data for cells 15-17 from LTC-2
     output_low(CSBI2);
     ltc6804_write_command(RDCVB);
     for (i = 15 ; i < 18 ; i ++)
@@ -208,105 +207,6 @@ void ltc6804_read_cell_voltages(cell_t * cell)
     spi_read(0xFF); // PEC1
     spi_read(0xFF); // PEC2
     output_high(CSBI2);
-}
-
-// Receives a pointer to an array of cells, sets ov and uv flags for each one
-void ltc6804_read_voltage_flags(cell_t * cell)
-{
-    int i,data;
-
-    output_low(CSBI1);
-    
-    ltc6804_write_command(RDSTATB); // voltage flags are stored in register group B
-    spi_read(0xFF); // 1st byte = digital power supply voltage lsb, useless
-    spi_read(0xFF); // 2nd byte = digital power supply voltage msb, useless
-    
-    data = spi_read(0xFF); // 3rd byte = ov and uv flags for cells 1-4
-    for (i = 0 ; i < 3 ; i+=2)
-    {
-        cell[i].uv_flag = (data & (1 <<  i   )) >>  i;
-        cell[i].ov_flag = (data & (1 << (i+1))) >> (i+1);
-    }
-    
-    data = spi_read(0xFF); // 4th byte = ov and uv flags for cells 5-8
-    for (i = 4 ; i < 7 ; i+=2)
-    {
-        cell[i].uv_flag = (data & (1 <<  i   )) >>  i;
-        cell[i].ov_flag = (data & (1 << (i+1))) >> (i+1);
-    }
-    
-    data = spi_read(0xFF); // 5th byte = ov and uv flags for cells 9-12
-    for (i = 8 ; i < 11 ; i+=2)
-    {
-        cell[i].uv_flag = (data & (1 <<  i   )) >>  i;
-        cell[i].ov_flag = (data & (1 << (i+1))) >> (i+1);
-    }
-    
-    spi_read(0xFF); // 6th byte = revision code and other useless bits
-    spi_read(0xFF); // PEC 1
-    spi_read(0xFF); // PEC 2
-    
-    output_high(CSBI1);
-}
-
-// Starts discharge for a cell
-// Receives the index of the cell (from 0 to 23)
-void ltc6804_start_discharge(int8 cell)
-{
-    if (cell <= 11)
-    {
-        // Cell is in LTC-1
-        g_discharge1 |= 1 << cell;
-        output_low(CSBI1);
-        ltc6804_write_config(g_discharge1);
-        output_high(CSBI1);
-    }
-    else if (cell <= 23)
-    {
-        // Cell is in LTC-2
-        g_discharge2 |= 1 << (cell-12);
-        output_low(CSBI1);
-        ltc6804_write_config(g_discharge2);
-        output_high(CSBI1);
-    }
-    else
-    {
-        // Cell is out of range, do not send anything
-        return;
-    }
-}
-
-// Stops discharge for a cell
-// Receives the index of the cell (from 0 to 23)
-void ltc6804_stop_discharge(int8 cell)
-{
-    if (cell <= 11)
-    {
-        // Cell is in LTC-1
-        g_discharge1 &= ~(1 << cell);
-        output_low(CSBI1);
-        ltc6804_write_config(g_discharge1);
-        output_high(CSBI1);
-    }
-    else if (cell <= 23)
-    {
-        // Cell is in LTC-2
-        g_discharge2 &= ~(1 << (cell-12));
-        output_low(CSBI2);
-        ltc6804_write_config(g_discharge2);
-        output_high(CSBI2);
-    }
-    else
-    {
-        // Cell is out of range, do not send anything
-        return;
-    }
-}
-
-// Stops discharge for all cells
-void ltc6804_stop_all_discharge(void)
-{
-    ltc6804_init();
 }
 
 #endif
