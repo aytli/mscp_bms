@@ -2,9 +2,9 @@
 
 #device PASS_STRINGS = IN_RAM
 
-#FUSES WPRES32                   //Watch Dog Timer PreScalar 1:32
-#FUSES WPOSTS1                   //Watch Dog Timer PostScalar 1:1
-#FUSES CKSFSM                    //Clock Switching is enabled, fail Safe clock monitor is enabled
+#fuses WPRES32 // Watch Dog Timer PreScalar 1:32
+#fuses WPOSTS1 // Watch Dog Timer PostScalar 1:1
+#fuses CKSFSM  // Clock Switching is enabled, fail Safe clock monitor is enabled
 
 // Use internal oscillator for delay
 #use delay(internal = 20000000)

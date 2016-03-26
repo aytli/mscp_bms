@@ -33,11 +33,13 @@
 #define CFGR3   0xA4   // Overvoltage  = 4.20V (0xA40)
 
 // Number of channels on the LTC6804, and number of channels being used
-#define N_CELLS 24       // The LTC6804 can monitor up to 12 cells
-#define N_CELLS_FINAL 30 // The number of cells in the final pack
+#define N_CELLS 30     // The 3 LTC devices will monitor 30 cells
 
 // Number of samples for moving average
-#define N_SAMPLES  10
+#define N_SAMPLES 10
+
+// Number of consecutive errors required to trip
+#define N_ERRORS 10
 
 // Voltage threshold for balancing to occur (BALANCE_THRESHOLD / 100) V
 #define BALANCE_THRESHOLD 140
@@ -64,11 +66,9 @@ typedef struct
     unsigned int16 voltage; // LTC6804 has a 16 bit voltage ADC
     unsigned int16 average_voltage;
     unsigned int16 samples[N_SAMPLES];
-    int8 temperature;
-    int8 ov_flag;
-    int8 uv_flag;
-    int8 ot_flag;
-    int16 discharge;
+    int8 ov_flag[N_ERRORS];
+    int8 uv_flag[N_ERRORS];
+    int8 ot_flag[N_ERRORS];
 } cell_t;
 
 // Function prototypes
@@ -153,7 +153,9 @@ void ltc6804_init(void)
 // Receives a pointer to an array of cells, writes the cell voltage to each one
 void ltc6804_read_cell_voltages(cell_t * cell)
 {
-    int i,msb,lsb;
+    int i;
+    int msb;
+    int lsb;
     
     // Start the cell voltage adc conversion
     output_low(CSBI1);

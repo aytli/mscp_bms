@@ -10,11 +10,6 @@
 #include "ltc6804.c"
 #include "adc.c"
 
-// Configuration
-#fuses WPRES32 // Watch Dog Timer PreScalar 1:32
-#fuses WPOSTS1 // Watch Dog Timer PostScalar 1:1
-#fuses CKSFSM  // Clock Switching is enabled, fail Safe clock monitor is enabled
-
 // PIC internal register addresses
 #word IFS0 = 0x0084
 
@@ -45,21 +40,10 @@ void isr_timer2(void)
 void init_cells(void)
 {
     int i;
-    
     for (i = 0 ; i < N_CELLS ; i++)
     {
         g_cell[i].voltage = 0;
-        g_cell[i].temperature = 0;
-        g_cell[i].ov_flag = 0;
-        g_cell[i].uv_flag = 0;
-        g_cell[i].ot_flag = 0;
     }
-    
-    g_cell[0].discharge = 0x00;
-    g_cell[1].discharge = 0x02;
-    g_cell[2].discharge = 0x04;
-    g_cell[3].discharge = 0x08;
-    
     g_highest_voltage_cell_index = 0;
     g_lowest_voltage_cell_index = 0;
 }
@@ -67,25 +51,30 @@ void init_cells(void)
 // Returns the index for the highest voltage cell
 int get_highest_voltage_cell_index(void)
 {
-    int i, highest = 0;
+    int i;
+    int highest = 0;
     for (i = 0 ; i < N_CELLS ; i++)
+    {
         if (g_cell[i].voltage >= g_cell[highest].voltage)
+        {
             highest = i;
+        }
+    }
     return highest;
 }
 
 // Returns the index for the lowest voltage cell
 int get_lowest_voltage_cell_index(void)
 {
-    int i, lowest = 0;
-    for (i = 0 ; i <= 3 ; i++)
-        if (g_cell[i].average_voltage 
-            <= g_cell[lowest].average_voltage)
+    int i;
+    int lowest = 0;
+    for (i = 0 ; i < N_CELLS ; i++)
+    {
+        if (g_cell[i].average_voltage <= g_cell[lowest].average_voltage)
+        {
             lowest = i;
-    for (i = 12 ; i <= 15 ; i++)
-        if (g_cell[i].average_voltage 
-            <= g_cell[lowest].average_voltage)
-            lowest = i;
+        }
+    }
     return lowest;
 }
 
@@ -93,11 +82,13 @@ int get_lowest_voltage_cell_index(void)
 void convert_adc_data_to_temps(void)
 {
     int i;
+    float resistance;
+    float temperature;
     for (i = 0; i < N_ADC_CHANNELS; i++)
     {
-        float resistance = THERMISTOR_SERIES * (float)g_adc_data[i] / 
+        resistance = THERMISTOR_SERIES * (float)g_adc_data[i] /
            (LSBS_PER_VOLT * THERMISTOR_SUPPLY - (float)g_adc_data[i]);
-        float temperature = resistance / THERMISTOR_NOMINAL;
+        temperature = resistance / THERMISTOR_NOMINAL;
         temperature = log(temperature);
         temperature /= B_COEFF;
         temperature += 1.0 / (TEMPERATURE_NOMINAL + 273.15);
@@ -107,43 +98,16 @@ void convert_adc_data_to_temps(void)
     }
 }
 
-// Debug code, remove later
-void print_discharge_bits(void)
-{
-    int i;
-    int32 discharge = (g_discharge1&0x0FFF)|((int32)((g_discharge2&0x0FFF)<<12));
-    for (i = 0; i < 16; i++)
-    {
-        printf("%c", (g_discharge1 >> i) & 1 ? '1' : '0');
-    }
-    printf("\r\n");
-    for (i = 0; i < 16; i++)
-    {
-        printf("%c", (g_discharge2 >> i) & 1 ? '1' : '0');
-    }
-    for (i = 0; i < 32; i++)
-    {
-        printf("%c", (discharge >> i) & 1 ? '1' : '0');
-    }
-    printf("\r\n");
-}
-
-void print_temperatures(void)
-{
-    printf("temp[%d] = %d\t\t", 0, (int)(g_temps[0] * 10));
-    printf("temp[%d] = %d\t\t", 1, (int)(g_temps[1] * 10));
-    printf("temp[%d] = %d\r\n", 2, (int)(g_temps[2] * 10));
-}
-
 // Discharge all the cells that are 1% of the SoC range voltage higher than
 // the lowest voltage
 void balance(void)
 {
     ltc6804_read_cell_voltages(g_cell);
-    int min_idx = get_lowest_voltage_cell_index();
+    
     int i;
+    int min_idx = get_lowest_voltage_cell_index();
 
-    for (i = 0; i <= 3; i++)
+    for (i = 0 ; i < 12 ; i++)
     {
         if ((g_cell[i].average_voltage - g_cell[min_idx].average_voltage)
             > BALANCE_THRESHOLD)
@@ -156,7 +120,7 @@ void balance(void)
         }
     }
 
-    for (i = 12; i <= 15; i++)
+    for (i = 12 ; i < 24 ; i++)
     {
         if ((g_cell[i].average_voltage - g_cell[min_idx].average_voltage)
             > BALANCE_THRESHOLD)
@@ -168,19 +132,35 @@ void balance(void)
             g_discharge2 &= ~(1 << (i - 12));
         }
     }
+    
+    for (i = 24 ; i < 30 ; i++)
+    {
+        if ((g_cell[i].average_voltage - g_cell[min_idx].average_voltage)
+            > BALANCE_THRESHOLD)
+        {
+            g_discharge3 |= 1 << (i - 24);
+        }
+        else
+        {
+            g_discharge3 &= ~(1 << (i - 24));
+        }
+    }
 
     output_low(CSBI1);
     ltc6804_write_config(g_discharge1);
     output_high(CSBI1);
-
     output_low(CSBI2);
     ltc6804_write_config(g_discharge2);
     output_high(CSBI2);
+    output_low(CSBI3);
+    ltc6804_write_config(g_discharge3);
+    output_high(CSBI3);
 }
 
 void average_voltage(void)
 {
-    int i,j;
+    int i;
+    int j;
     unsigned int32 sum;
     for (i = 0 ; i < N_CELLS ; i++)
     {
@@ -219,18 +199,19 @@ void send_temperature_data(void)
 
 void send_balancing_bits(void)
 {
-    int32 discharge = (g_discharge1&0x0FFF)|((int32)((g_discharge2&0x0FFF)<<12));
+    int32 discharge = (g_discharge1&0x000FFF)
+            |((int32)((g_discharge2&0x000FFF)<<12))
+            |((int32)((g_discharge3&0x00003F)<<18));
     putc(BALANCE_ID);
     putc((int8)(discharge&0xFF));
-    putc((int8)((discharge>>8)&0xFF));
+    putc((int8)((discharge>> 8)&0xFF));
     putc((int8)((discharge>>16)&0xFF));
-    putc((int8)((discharge>>24)&0xFF));
+    putc((int8)((discharge>>24)&0x3F));
 }
 
 // Main
 void main()
 {
-    int data[8];
     // Set up and enable timer 2 to interrupt every 1ms using 20MHz clock
     setup_timer2(TMR_INTERNAL|TMR_DIV_BY_256,39);
     enable_interrupts(INT_TIMER2);
@@ -244,7 +225,7 @@ void main()
     
     ltc6804_wakeup();
     ltc6804_init();
-    //ads7952_init();
+    ads7952_init();
 
     while (true)
     {
@@ -256,7 +237,6 @@ void main()
         ads7952_read_all_channels(g_adc_data);
         convert_adc_data_to_temps();
         send_temperature_data();
-        print_temperatures();
         delay_ms(10);
         
         balance();
