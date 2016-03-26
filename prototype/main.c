@@ -1,7 +1,7 @@
 // BPMS Prototype code
 // Authors: Andy Li, Stefan Dumitrescu, Mhamad Salih
 // Copyright 2016, McMaster Solar Car Project
-// Monitors voltage and performs charge balancing for 4 cells
+// Monitors voltage and performs charge balancing for 8 cells
 
 // Includes
 #include "main.h"
@@ -281,22 +281,22 @@ void main()
     
     ltc6804_wakeup();
     ltc6804_init();
-    //ads7952_init();
+    ads7952_init();
 
     while (true)
     {
         ltc6804_read_cell_voltages(g_cell);
-        //send_voltage_data();
+        send_voltage_data();
         delay_ms(10);
         
         ads7952_read_all_channels(g_adc_data);
         convert_adc_data_to_temps();
-        //send_temperature_data();
-        print_temperatures();
+        send_temperature_data();
+        //print_temperatures();
         delay_ms(10);
         
         balance();
-        //send_balancing_bits();
+        send_balancing_bits();
         delay_ms(10);
         
         //print_discharge_bits();

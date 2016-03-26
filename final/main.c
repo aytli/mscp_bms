@@ -1,7 +1,7 @@
-// BPMS Prototype code
+// BPMS final code
 // Authors: Andy Li, Stefan Dumitrescu, Mhamad Salih
 // Copyright 2016, McMaster Solar Car Project
-// Monitors voltage and performs charge balancing for 4 cells
+// Monitors voltage and performs charge balancing for 30 cells
 
 // Includes
 #include "main.h"
