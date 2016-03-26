@@ -42,6 +42,18 @@
 // Voltage threshold for balancing to occur (BALANCE_THRESHOLD / 100) V
 #define BALANCE_THRESHOLD 140
 
+#define SELECT_LTC_1        \
+    output_low(MOSI_SEL0);  \
+    output_low(MOSI_SEL1);
+
+#define SELECT_LTC_2        \
+    output_high(MOSI_SEL0); \
+    output_low(MOSI_SEL1);
+
+#define SELECT_LTC_3        \
+    output_low(MOSI_SEL0);  \
+    output_high(MOSI_SEL1);
+
 static int16 g_discharge1;
 static int16 g_discharge2;
 
@@ -152,7 +164,7 @@ void ltc6804_read_cell_voltages(cell_t * cell)
     delay_us(500);
     
     // Read data for cells 0-2 from LTC-1
-    output_low(MOSI_SEL);
+    SELECT_LTC_1;
     output_low(CSBI1);
     ltc6804_write_command(RDCVA);
     for (i = 0 ; i < 3 ; i ++)
@@ -164,10 +176,9 @@ void ltc6804_read_cell_voltages(cell_t * cell)
     spi_read(0xFF); // PEC1
     spi_read(0xFF); // PEC2    
     output_high(CSBI1);
-    output_high(MOSI_SEL);
     
     // Read data for cells 12-14 from LTC-2
-    output_low(CSBI2);
+    SELECT_LTC_2;
     ltc6804_write_command(RDCVA);
     for (i = 12 ; i < 15 ; i ++)
     {
@@ -182,7 +193,7 @@ void ltc6804_read_cell_voltages(cell_t * cell)
     delay_us(10);
     
     // Read data for cells 3-5 from LTC-1
-    output_low(MOSI_SEL);
+    SELECT_LTC_1;
     output_low(CSBI1);
     ltc6804_write_command(RDCVB);
     for (i = 3 ; i < 6 ; i ++)
@@ -194,7 +205,6 @@ void ltc6804_read_cell_voltages(cell_t * cell)
     spi_read(0xFF); // PEC1
     spi_read(0xFF); // PEC2    
     output_high(CSBI1);
-    output_high(MOSI_SEL);
     
     // Read data for cells 15-17 from LTC-1
     output_low(CSBI2);

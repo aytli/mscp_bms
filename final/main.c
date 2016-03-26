@@ -16,7 +16,7 @@
 #fuses CKSFSM  // Clock Switching is enabled, fail Safe clock monitor is enabled
 
 // PIC internal register addresses
-#word IFS0  = 0x0084
+#word IFS0 = 0x0084
 
 // Macros to disable timers and clear flags
 #define CLEAR_T2_FLAG IFS0  &= 0xFF7F
@@ -26,20 +26,20 @@
 #define TEMP_ID     0x69
 #define BALANCE_ID  0x41
 
-static cell_t           g_cell[N_CELLS];
-static unsigned int16   g_adc_data[N_ADC_CHANNELS];
-static float            g_temps[N_ADC_CHANNELS];
-static int              g_highest_voltage_cell_index;
-static int              g_lowest_voltage_cell_index;
+static cell_t         g_cell[N_CELLS];
+static unsigned int16 g_adc_data[N_ADC_CHANNELS];
+static float          g_temps[N_ADC_CHANNELS];
+static int            g_highest_voltage_cell_index;
+static int            g_lowest_voltage_cell_index;
 
-typedef struct {
-    int16 voltages[N_CELLS_FINAL];
-    int8 temps[N_ADC_CHANNELS];
-    int16 current;
-    int32 discharge;
-} bms_page_t;
-
-bms_page_t g_bms_page;
+// Set up timer 2 as a millisecond timer
+int16 g_ms;
+#int_timer2 level = 4
+void isr_timer2(void)
+{
+    g_ms++; //keep a running timer interupt that increments every milli-second
+    CLEAR_T2_FLAG;
+}
 
 // Initializes the cells, clears all flags, resets highest and lowest cells
 void init_cells(void)
@@ -92,19 +92,19 @@ int get_lowest_voltage_cell_index(void)
 // Use the simplified Steinhart-Hart equation to approximate temperatures
 void convert_adc_data_to_temps(void)
 {
-   int i;
-   for (i = 0; i < N_ADC_CHANNELS; i++)
-   {
-      float resistance = THERMISTOR_SERIES * (float)g_adc_data[i] / 
-         (LSBS_PER_VOLT * THERMISTOR_SUPPLY - (float)g_adc_data[i]);
-      float temperature = resistance / THERMISTOR_NOMINAL;
-      temperature = log(temperature);
-      temperature /= B_COEFF;
-      temperature += 1.0 / (TEMPERATURE_NOMINAL + 273.15);
-      temperature = 1.0 / temperature;
-      temperature -= 273.15;
-      g_temps[i] = temperature;
-   }
+    int i;
+    for (i = 0; i < N_ADC_CHANNELS; i++)
+    {
+        float resistance = THERMISTOR_SERIES * (float)g_adc_data[i] / 
+           (LSBS_PER_VOLT * THERMISTOR_SUPPLY - (float)g_adc_data[i]);
+        float temperature = resistance / THERMISTOR_NOMINAL;
+        temperature = log(temperature);
+        temperature /= B_COEFF;
+        temperature += 1.0 / (TEMPERATURE_NOMINAL + 273.15);
+        temperature = 1.0 / temperature;
+        temperature -= 273.15;
+        g_temps[i] = temperature;
+    }
 }
 
 // Debug code, remove later
@@ -130,50 +130,9 @@ void print_discharge_bits(void)
 
 void print_temperatures(void)
 {
-//!   int i;
-//!   for (i = 0; i < N_ADC_CHANNELS; i++)
-//!   {
-//!      printf("temp[%d] = %d\r\n", i, (int)(g_temps[i] * 10));
-//!   }
-//!   printf("\r\n");
     printf("temp[%d] = %d\t\t", 0, (int)(g_temps[0] * 10));
     printf("temp[%d] = %d\t\t", 1, (int)(g_temps[1] * 10));
     printf("temp[%d] = %d\r\n", 2, (int)(g_temps[2] * 10));
-}
-
-// Set up timer 2 as a millisecond timer
-int16 g_ms;
-#int_timer2 level = 4
-void isr_timer2(void)
-{
-    g_ms++; //keep a running timer interupt that increments every milli-second
-    CLEAR_T2_FLAG;
-}
-
-void update_bms_page()
-{
-    int i;
-    for (i = 0; (i < N_CELLS) && (i < N_CELLS_FINAL); i++)
-    {
-        g_bms_page.voltages[i] = g_cell[i].average_voltage;
-    }
-    for (i = 0; i < N_ADC_CHANNELS; i++)
-    {
-        g_bms_page.temps[i] = (int8)g_temps[i];
-    }
-    // Placeholder, we don't have current measurement yet
-    g_bms_page.current = 0;
-    // For the prototype we only have 8 cells
-    g_bms_page.discharge = ((g_discharge2 & 0xF) << 4) | (g_discharge1 & 0xF);
-}
-
-void transmit_bms_page()
-{
-   int i;
-   for (i = 0; i < sizeof(bms_page_t); i++)
-   {
-        printf("%c", *(((int8*)(&g_bms_page)) + i));
-   }
 }
 
 // Discharge all the cells that are 1% of the SoC range voltage higher than
@@ -219,7 +178,7 @@ void balance(void)
     output_high(CSBI2);
 }
 
-void send_voltage_data(void)
+void average_voltage(void)
 {
     int i,j;
     unsigned int32 sum;
@@ -235,7 +194,11 @@ void send_voltage_data(void)
         g_cell[i].samples[N_SAMPLES-1] = g_cell[i].voltage;
         g_cell[i].average_voltage = (unsigned int16) (sum/N_SAMPLES);
     }
-    
+}
+
+void send_voltage_data(void)
+{
+    int i;
     putc(VOLTAGE_ID);
     for (i = 0 ; i < N_CELLS ; i ++)
     {
@@ -286,54 +249,18 @@ void main()
     while (true)
     {
         ltc6804_read_cell_voltages(g_cell);
-        //send_voltage_data();
+        average_voltage();
+        send_voltage_data();
         delay_ms(10);
         
         ads7952_read_all_channels(g_adc_data);
         convert_adc_data_to_temps();
-        //send_temperature_data();
+        send_temperature_data();
         print_temperatures();
         delay_ms(10);
         
         balance();
-        //send_balancing_bits();
-        delay_ms(10);
-        
-        //print_discharge_bits();
-        
-        //print_cell_voltages();
-        //print_discharge_bits();
-        //convert_adc_data_to_temps();
-        //print_temperatures();
-        //update_bms_page();
-        //transmit_bms_page();
-        
-        /*output_low(CSBI2);
-        ltc6804_write_command(ADCV);
-        output_high(CSBI2);
-        
-        delay_us(500);
-        
-        output_low(CSBI2);
-        ltc6804_write_command(RDCVA);
-        
-        data[0] = spi_read(0xFF);
-        data[1] = spi_read(0xFF);
-        
-        data[2] = spi_read(0xFF);
-        data[3] = spi_read(0xFF);
-        
-        data[4] = spi_read(0xFF);
-        data[5] = spi_read(0xFF);
-        
-        data[6] = spi_read(0xFF);
-        data[7] = spi_read(0xFF);
-        
-        output_high(CSBI2);
-        
-        printf("\n\n\n\n\n\n\rLower:\t%Lu\t%Lu\t%Lu\t%Lu\t%Lu\t%Lu\t%Lu\t%Lu",
-            data[0],data[1],data[2],data[3],data[4],data[5],data[6],data[7]);*/
-        
+        send_balancing_bits();
         delay_ms(200);
     }
 }

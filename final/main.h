@@ -1,4 +1,4 @@
-#include <24HJ128GP502.h>
+#include <24HJ256GP610A.h>
 
 #device PASS_STRINGS = IN_RAM
 
@@ -10,25 +10,21 @@
 #use delay(internal = 20000000)
 
 // UART port (PIC24HJ128GP502)
-#use rs232(baud = 57600, xmit = PIN_B8, rcv = PIN_B9)
+#use rs232(baud = 57600, UART1)
 
 // SPI port 1: LTC6804-1
-#pin_select SDI1     = PIN_B0   // MISO
-#pin_select SDO1     = PIN_B1   // MOSI
-#pin_select SCK1OUT  = PIN_B2   // SCK
-#define     CSBI1      PIN_B3   // LTC-1 chip select, active low
-#define     CSBI2      PIN_B12  // LTC-2 chip select, active low
-#define     MOSI_SEL   PIN_B4   // Select between 2 MOSI lines
+#use spi(SPI1)
+#define CSBI1     PIN_D10 // LTC-1 chip select, active low
+#define CSBI2     PIN_A3  // LTC-2 chip select, active low
+#define CSBI3     PIN_A2  // LTC-3 chip select, active low
+#define MOSI_SEL0 PIN_D14 // Select between 3 MOSI lines
+#define MOSI_SEL1 PIN_D15
 
 // SPI port 2: ADS7952
-#pin_select SDI2     = PIN_B15 // MISO
-#pin_select SDO2     = PIN_B14 // MOSI
-#pin_select SCK2OUT  = PIN_B13 // SCK
-#define     ADC1_SEL   PIN_B12 // ADC-1, cells 1-12
-#define     ADC2_SEL   PIN_B13 // ADC-2, cells 13-24
+#use spi(SPI2)
+#define ADC1_SEL  PIN_B8  // ADC-1, thermistors 0-11
+#define ADC2_SEL  PIN_B9  // ADC-2, thermistors 12-23
 
 // Miscellaneous pins
-#define HEARTBEAT_LED1 PIN_A4 // Hearbeat and diagnostic LED
-#define HEARTBEAT_LED2 PIN_B5 // Hearbeat and diagnostic LED
-#define BALANCE_PIN    PIN_B6 // Balancing button
-#define UNBALANCE_PIN  PIN_B7 // Unbalancing button
+#define HEARTBEAT_LED1 PIN_E2  // Hearbeat and diagnostic LED
+#define HEARTBEAT_LED2 PIN_G13 // Hearbeat and diagnostic LED
