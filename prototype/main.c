@@ -11,6 +11,7 @@
 #include "adc.c"
 #include "fan.c"
 #include "hall_sensor.c"
+#include "can-pic24.c"
 
 // PIC internal register addresses
 #word IFS0 = 0x0084
@@ -246,7 +247,7 @@ void main()
     set_adc_channel(0);
     delay_us(10);
     
-    /*init_PEC15_Table();
+    init_PEC15_Table();
     init_cells();
     
     ltc6804_wakeup();
@@ -254,12 +255,13 @@ void main()
     
     ads7952_init();
     
-    fan_init();*/
-
+    //fan_init();
+    
     while (true)
     {
-        printf("current: %f\r\n", hall_sensor_adjust_current(read_adc()));
-        delay_ms(100);
+        // current test code
+        /*printf("current: %f\r\n", hall_sensor_adjust_current(read_adc()));
+        delay_ms(100);*/
         
         // labview test code
         /*ltc6804_read_cell_voltages(g_cell);

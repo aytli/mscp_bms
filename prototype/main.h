@@ -28,7 +28,11 @@
 #define     ADC1_SEL   PIN_B12 // ADC-1, cells 1-12
 #define     ADC2_SEL   PIN_B13 // ADC-2, cells 13-24
 
+// CANbus port
+#pin_select C1TX     = PIN_B6  // CANTX pin
+#pin_select C1RX     = PIN_B7  // CANRX pin
+
 // Miscellaneous pins
-#define HEARTBEAT_LED1 PIN_A4 // Hearbeat and diagnostic LED
-#define HEARTBEAT_LED2 PIN_B5 // Hearbeat and diagnostic LED
-#define FAN_PIN        PIN_A4 // Fan PWM signal (LED on the prototype)
+#define TEST_LED1      PIN_A4  // Test LED (green)
+#define TEST_LED2      PIN_B5  // Test LED (red)
+#define FAN_PIN        PIN_A4  // Fan PWM signal (LED on the prototype)
