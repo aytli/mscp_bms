@@ -1,3 +1,6 @@
+#ifndef HALLSENSOR_C
+#define HALLSENSOR_C
+
 // Practice pack calibration
 #define CURRENT_CHARGE_MAX    2546  //~+40 A
 #define CURRENT_DISCHARGE_MAX 1031  //~-80 A
@@ -25,14 +28,16 @@ float rawToCurr(unsigned int16 rawCurr)
  *  1 if the hall sensor measures positive current, 0 otherwise
  *
  */
-unsigned int8 hallDischarge(void)
+unsigned int8 hall_sensor_discharge(void)
 {
     return (hallSensor.data < CURRENT_ZERO);
 }
 
 //Retrieves and returns uint16 raw current value from hall effect sensor
-unsigned int16 getRawCurrentVal(void)
+unsigned int16 hall_sensor_read_data(void)
 {
     unsigned int16 raw_current = read_adc();
     return(raw_current);
 }
+
+#endif

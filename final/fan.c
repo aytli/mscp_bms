@@ -1,3 +1,6 @@
+#ifndef FAN_C
+#define FAN_C
+
 #define FAN_PERIOD 10
 
 enum fan_speed_t
@@ -40,3 +43,5 @@ void fan_set_speed(fan_speed_t speed)
 {
     g_speed = speed;
 }
+
+#endif
