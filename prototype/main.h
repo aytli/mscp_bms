@@ -1,6 +1,7 @@
 #include <24HJ128GP502.h>
 
 #device PASS_STRINGS = IN_RAM
+#device ADC = 12
 
 #fuses WPRES32 //Watch Dog Timer PreScalar 1:32
 #fuses WPOSTS1 //Watch Dog Timer PostScalar 1:1

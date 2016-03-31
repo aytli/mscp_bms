@@ -10,6 +10,7 @@
 #include "ltc6804.c"
 #include "adc.c"
 #include "fan.c"
+#include "hall_sensor.c"
 
 // PIC internal register addresses
 #word IFS0 = 0x0084
@@ -240,7 +241,12 @@ void main()
     setup_spi(SPI_MASTER|SPI_SCK_IDLE_HIGH|SPI_CLK_DIV_12|SPI_XMIT_L_TO_H);
     setup_spi2(SPI_MASTER|SPI_SCK_IDLE_LOW|SPI_CLK_DIV_12|SPI_XMIT_L_TO_H);
     
-    init_PEC15_Table();
+    setup_adc(ADC_CLOCK_INTERNAL);
+    setup_adc_ports(ALL_ANALOG);
+    set_adc_channel(0);
+    delay_us(10);
+    
+    /*init_PEC15_Table();
     init_cells();
     
     ltc6804_wakeup();
@@ -248,18 +254,14 @@ void main()
     
     ads7952_init();
     
-    fan_init();
+    fan_init();*/
 
     while (true)
     {
-        fan_set_speed(FAN_OFF);
-        delay_ms(500);
-        fan_set_speed(FAN_LOW);
-        delay_ms(500);
-        fan_set_speed(FAN_HIGH);
-        delay_ms(500);
-        fan_set_speed(FAN_MAX);
-        delay_ms(500);
+        printf("current: %f\r\n", hall_sensor_adjust_current(read_adc()));
+        delay_ms(100);
+        
+        // labview test code
         /*ltc6804_read_cell_voltages(g_cell);
         average_voltage();
         send_voltage_data();

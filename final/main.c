@@ -237,7 +237,7 @@ void main()
     
     fan_init();
     
-    set_adc_channel(HALL_ADC_CHANNEL);
+    hall_sensor_init();
 
     while (true)
     {

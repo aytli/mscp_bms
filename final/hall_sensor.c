@@ -7,37 +7,34 @@
 #define CURRENT_ZERO          2043
 #define CURRENT_SLOPE         12.64
 
-#define HALL_ADC_CHANNEL 3
+#define HALL_ADC_CHANNEL 24
+#define HALL_ANALOG_PIN  sAN24
 
-typedef struct
+// Initializes the hall effect sensor interface
+void hall_sensor_init(void)
 {
-    unsigned int16 data;
-    unsigned int8  overCount;
-    unsigned int8  overFlag;
-} hall_data_t;
-
-float rawToCurr(unsigned int16 rawCurr)
-{
-   return ((float)rawCurr - CURRENT_ZERO)/CURRENT_SLOPE;
+    setup_adc(ADC_CLOCK_INTERNAL);
+    setup_adc_ports(HALL_ANALOG_PIN);
+    set_adc_channel(HALL_ADC_CHANNEL);
+    delay_us(10);
 }
 
-/*
- *  hallDischarge
- *
- *  Return:
- *  1 if the hall sensor measures positive current, 0 otherwise
- *
- */
-unsigned int8 hall_sensor_discharge(void)
+// Returns the calibrated current value from the raw adc reading
+float hall_sensor_adjust_current(unsigned int16 raw_current)
 {
-    return (hallSensor.data < CURRENT_ZERO);
+   return ((float)raw_current - CURRENT_ZERO)/CURRENT_SLOPE;
 }
 
-//Retrieves and returns uint16 raw current value from hall effect sensor
+// Returns 1 if the current reading is positive, 0 otherwise
+unsigned int8 hall_sensor_discharge(unsigned int16 current)
+{
+    return (current < CURRENT_ZERO);
+}
+
+// Retrieves and returns uint16 raw current value from hall effect sensor
 unsigned int16 hall_sensor_read_data(void)
 {
-    unsigned int16 raw_current = read_adc();
-    return(raw_current);
+    return((unsigned int16)(read_adc()));
 }
 
 #endif
