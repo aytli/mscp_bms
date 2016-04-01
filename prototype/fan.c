@@ -10,7 +10,7 @@ enum fan_speed_t
 
 static fan_speed_t g_speed = 0;
 
-// Set up timer 2 as a millisecond timer
+// Set up timer 3 as a millisecond timer
 int8 ms;
 #int_timer3
 void isr_timer3(void)
@@ -33,6 +33,9 @@ void isr_timer3(void)
 
 void fan_init(void)
 {
+    // Set up and enable timer 3 to interrupt every 1ms using 20MHz clock
+    setup_timer3(TMR_INTERNAL|TMR_DIV_BY_256,39);
+    enable_interrupts(INT_TIMER3);
     g_speed = FAN_LOW;
 }
 

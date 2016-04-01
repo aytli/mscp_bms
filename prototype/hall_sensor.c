@@ -7,7 +7,7 @@
 #define CURRENT_ZERO          2043
 #define CURRENT_SLOPE         12.64
 
-#define HALL_ADC_CHANNEL 0
+#define HALL_ADC_CHANNEL 1
 
 typedef struct
 {
@@ -16,22 +16,21 @@ typedef struct
     unsigned int8  overFlag;
 } hall_data_t;
 
+void hall_sensor_init(void)
+{
+    setup_adc(ADC_CLOCK_INTERNAL);
+    setup_adc_ports(sAN1);
+}
+
 float hall_sensor_adjust_current(unsigned int16 raw_current)
 {
    return ((float)raw_current - CURRENT_ZERO)/CURRENT_SLOPE;
 }
 
-/*
- *  hallDischarge
- *
- *  Return:
- *  1 if the hall sensor measures positive current, 0 otherwise
- *
- */
-unsigned int8 hall_sensor_discharge(void)
+// Returns 1 if current_data is a positive current reading, 0 if negative
+unsigned int8 hall_sensor_discharge(unsigned int16 current_data)
 {
-    return 0;
-    //return (hallSensor.data < CURRENT_ZERO);
+    return (current_data < CURRENT_ZERO);
 }
 
 //Retrieves and returns uint16 raw current value from hall effect sensor

@@ -1,7 +1,9 @@
 #ifndef LTC6804_C
 #define LTC6804_C
 
+#ifndef PEC_C
 #include "pec.c"
+#endif
 
 // LTC6804 datasheet: http://cds.linear.com/docs/en/datasheet/680412fb.pdf
 
@@ -128,6 +130,7 @@ void ltc6804_init(void)
     g_discharge1 = 0x0000;
     g_discharge2 = 0x0000;
     
+    ltc6804_wakeup();
     output_low(CSBI1);
     ltc6804_write_config(g_discharge1);
     output_high(CSBI1);
@@ -165,7 +168,7 @@ void ltc6804_read_cell_voltages(cell_t * cell)
         cell[i].voltage = (msb<<8)+lsb;
     }    
     spi_read(0xFF); // PEC1
-    spi_read(0xFF); // PEC2    
+    spi_read(0xFF); // PEC2
     output_high(CSBI1);
     
     // Read data for cells 3-5 from LTC-1
@@ -178,7 +181,7 @@ void ltc6804_read_cell_voltages(cell_t * cell)
         cell[i].voltage = (msb<<8)+lsb;
     }    
     spi_read(0xFF); // PEC1
-    spi_read(0xFF); // PEC2    
+    spi_read(0xFF); // PEC2
     output_high(CSBI1);
     
     // Read data for cells 12-14 from LTC-2

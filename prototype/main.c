@@ -11,7 +11,7 @@
 #include "adc.c"
 #include "fan.c"
 #include "hall_sensor.c"
-#include "can-pic24.c"
+//#include "can-pic24.c"
 
 // PIC internal register addresses
 #word IFS0 = 0x0084
@@ -24,11 +24,21 @@
 #define TEMP_ID     0x69
 #define BALANCE_ID  0x41
 
+// Protection limits
+#define VOLTAGE_MAX             42000 // 4.2V
+#define VOLTAGE_MIN             27500 // 2.75V
+#define TEMP_WARNING            10000 // 60°C, actual value to be determined
+#define TEMP_CRITICAL           15000 // 70°C, actual value to be determined
+#define CURRENT_DISCHARGE_LIMIT 1031  // -80A, actual value to be determined
+#define CURRENT_CHARGE_LIMIT    2546  // +40A, actual value to be determined
+
 static cell_t         g_cell[N_CELLS];
 static unsigned int16 g_adc_data[N_ADC_CHANNELS];
+static unsigned int16 g_current;
 static float          g_temps[N_ADC_CHANNELS];
 static int            g_highest_voltage_cell_index;
 static int            g_lowest_voltage_cell_index;
+static int            g_highest_temperature_cell_index;
 
 // Set up timer 2 as a millisecond timer
 int16 g_ms;
@@ -49,6 +59,8 @@ void init_cells(void)
     }
     g_highest_voltage_cell_index = 0;
     g_lowest_voltage_cell_index = 0;
+    g_highest_temperature_cell_index = 0;
+    g_current = 0;
 }
 
 // Returns the index for the highest voltage cell
@@ -86,6 +98,20 @@ int get_lowest_voltage_cell_index(void)
         }
     }
     return lowest;
+}
+
+int get_highest_temperature_cell_index(void)
+{
+    int i;
+    int highest = 0;
+    for (i = 0 ; i < N_ADC_CHANNELS ; i++)
+    {
+        if (g_adc_data[i] >= g_adc_data[highest])
+        {
+            highest = i;
+        }
+    }
+    return highest;
 }
 
 // Use the simplified Steinhart-Hart equation to approximate temperatures
@@ -140,15 +166,12 @@ void print_temperatures(void)
 // the lowest voltage
 void balance(void)
 {
-    ltc6804_read_cell_voltages(g_cell);
-    
     int i;
-    int min_idx = get_lowest_voltage_cell_index();
+    int min_voltage = g_cell[g_lowest_voltage_cell_index].average_voltage;
 
     for (i = 0; i <= 3; i++)
     {
-        if ((g_cell[i].average_voltage - g_cell[min_idx].average_voltage)
-            > BALANCE_THRESHOLD)
+        if ((g_cell[i].average_voltage - min_voltage) > BALANCE_THRESHOLD)
         {
             g_discharge1 |= 1 << i;
         }
@@ -160,8 +183,7 @@ void balance(void)
 
     for (i = 12; i <= 15; i++)
     {
-        if ((g_cell[i].average_voltage - g_cell[min_idx].average_voltage)
-            > BALANCE_THRESHOLD)
+        if ((g_cell[i].average_voltage - min_voltage) > BALANCE_THRESHOLD)
         {
             g_discharge2 |= 1 << (i - 12);
         }
@@ -233,51 +255,99 @@ void send_balancing_bits(void)
 // Main
 void main()
 {
+    unsigned int16 highest_voltage;
+    unsigned int16 lowest_voltage;
+    unsigned int16 highest_temperature;
+    
     // Set up and enable timer 2 to interrupt every 1ms using 20MHz clock
     setup_timer2(TMR_INTERNAL|TMR_DIV_BY_256,39);
-    setup_timer3(TMR_INTERNAL|TMR_DIV_BY_256,39);
-    enable_interrupts(INT_TIMER2|INT_TIMER3);
+    enable_interrupts(INT_TIMER2);
 
     // Set up SPI ports
     setup_spi(SPI_MASTER|SPI_SCK_IDLE_HIGH|SPI_CLK_DIV_12|SPI_XMIT_L_TO_H);
     setup_spi2(SPI_MASTER|SPI_SCK_IDLE_LOW|SPI_CLK_DIV_12|SPI_XMIT_L_TO_H);
     
-    setup_adc(ADC_CLOCK_INTERNAL);
-    setup_adc_ports(ALL_ANALOG);
-    set_adc_channel(0);
-    delay_us(10);
-    
-    init_PEC15_Table();
+    init_PEC15_Table(); // initialize PEC table
     init_cells();
-    
-    ltc6804_wakeup();
     ltc6804_init();
-    
     ads7952_init();
-    
+    hall_sensor_init();
     //fan_init();
     
     while (true)
     {
-        // current test code
-        /*printf("current: %f\r\n", hall_sensor_adjust_current(read_adc()));
-        delay_ms(100);*/
-        
-        // labview test code
-        /*ltc6804_read_cell_voltages(g_cell);
+        // Find highest and lowest cell voltages
+        ltc6804_read_cell_voltages(g_cell);
         average_voltage();
-        send_voltage_data();
-        delay_ms(10);
+        g_highest_voltage_cell_index = get_highest_voltage_cell_index();
+        g_lowest_voltage_cell_index = get_lowest_voltage_cell_index();
+        highest_voltage = g_cell[g_highest_voltage_cell_index].average_voltage;
+        lowest_voltage = g_cell[g_lowest_voltage_cell_index].average_voltage;
         
+        if (highest_voltage >= VOLTAGE_MAX)
+        {
+            // over voltage protection
+            // shut off pack and write OV error and cell id to eeprom
+        }
+        else if (lowest_voltage <= VOLTAGE_MIN)
+        {
+            // under voltage protection
+            // shut off pack and write UV error and cell if to eeprom
+        }
+        else
+        {
+            // cell voltages are fine, do nothing
+        }
+        
+        // Find highest temperature reading
         ads7952_read_all_channels(g_adc_data);
         convert_adc_data_to_temps();
+        g_highest_temperature_cell_index = get_highest_temperature_cell_index();
+        highest_temperature = g_adc_data[g_highest_temperature_cell_index];
+        
+        if (highest_temperature >= TEMP_CRITICAL)
+        {
+            // temperature discharge protection
+            // shut off pack, write OT error and cell id to eeprom
+        }
+        else if (highest_temperature >= TEMP_WARNING)
+        {
+            // tempeature charge protection
+            // disable charging
+        }
+        else
+        {
+            // cell temperatures are fine, do nothing
+        }
+        
+        // Read the pack current
+        g_current = hall_sensor_read_data();
+        
+        if (g_current >= CURRENT_DISCHARGE_LIMIT)
+        {
+            // discharge current protection
+            // shut off pack, write OC error to eeprom
+        }
+        else if (g_current <= CURRENT_CHARGE_LIMIT)
+        {
+            // charge current protection
+            // shut off pack, write UC error to eeprom
+        }
+        else
+        {
+            // current is fine, do nothing
+        }
+        
+        // Send data to LabVIEW over uart
+        send_voltage_data();
+        delay_ms(10);
         send_temperature_data();
         //print_temperatures();
         delay_ms(10);
-        
         balance();
         send_balancing_bits();
-        delay_ms(200);*/
+        output_toggle(TEST_LED2);
+        delay_ms(200);
     }
 }
 
