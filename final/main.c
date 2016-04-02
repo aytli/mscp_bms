@@ -244,7 +244,8 @@ void main()
         //ads7952_read_all_channels(g_adc_data);
         //printf("\r\nasdf %Lx",g_adc_data[0]);
         
-        putc(0x69);
+        //putc(0x69);
+        printf("\r\nasdfasdfasdfasdf");
         
         output_toggle(STATUS);
         delay_ms(200);
