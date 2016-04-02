@@ -12,7 +12,7 @@
 #use delay(crystal = 20000000)
 
 // UART port (PIC24HJ256GP610A)
-#use rs232(baud = 57600, xmit = PIN_F3, rcv = PIN_F2)
+#use rs232(baud = 57600, xmit = PIN_F2, rcv = PIN_F3)
 
 // SPI port 1: LTC6804-1
 #use spi(SPI1)
@@ -26,6 +26,10 @@
 #use spi(SPI2)
 #define ADC1_SEL  PIN_B8  // ADC-1, thermistors 0-11
 #define ADC2_SEL  PIN_B9  // ADC-2, thermistors 12-23
+
+// I2C port: CAT24AA02
+#use i2c(I2C1, FAST)
+#define WP_PIN    PIN_A6
 
 // LCD interface (4 bit mode)
 #define RS_PIN    PIN_C4
