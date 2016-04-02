@@ -38,9 +38,6 @@
 // Number of samples for moving average
 #define N_SAMPLES 10
 
-// Number of consecutive errors required to trip
-#define N_ERRORS 10
-
 // Voltage threshold for balancing to occur (BALANCE_THRESHOLD / 100) V
 #define BALANCE_THRESHOLD 140
 
@@ -66,9 +63,6 @@ typedef struct
     unsigned int16 voltage; // LTC6804 has a 16 bit voltage ADC
     unsigned int16 average_voltage;
     unsigned int16 samples[N_SAMPLES];
-    int8 ov_flag[N_ERRORS];
-    int8 uv_flag[N_ERRORS];
-    int8 ot_flag[N_ERRORS];
 } cell_t;
 
 // Function prototypes

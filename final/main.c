@@ -28,6 +28,9 @@
 #define KILOVAC_ON  output_high(KVAC_PIN);
 #define KILOVAC_OFF output_low(KVAC_PIN);
 
+// Status LED blink period
+#define HEARTBEAT_PERIOD_MS 500
+
 static cell_t         g_cell[N_CELLS];
 static unsigned int16 g_adc_data[N_ADC_CHANNELS];
 static float          g_temps[N_ADC_CHANNELS];
@@ -41,6 +44,11 @@ void isr_timer2(void)
 {
     g_ms++; //keep a running timer interupt that increments every milli-second
     CLEAR_T2_FLAG;
+    if (g_ms >= HEARTBEAT_PERIOD_MS/2)
+    {
+        output_toggle(STATUS);
+        g_ms = 0;
+    }
 }
 
 // Initializes the cells, clears all flags, resets highest and lowest cells
@@ -244,10 +252,8 @@ void main()
         //ads7952_read_all_channels(g_adc_data);
         //printf("\r\nasdf %Lx",g_adc_data[0]);
         
-        //putc(0x69);
-        printf("\r\nasdfasdfasdfasdf");
-        
-        output_toggle(STATUS);
+        putc(0x69);
+        //printf("\r\nasdfasdfasdfasdf");
         delay_ms(200);
         
         
@@ -265,11 +271,13 @@ void main()
         {
             // over voltage protection
             // shut off pack and write OV error and cell id to eeprom
+            KILOVAC_OFF;
         }
         else if (lowest_voltage <= VOLTAGE_MIN)
         {
             // under voltage protection
             // shut off pack and write UV error and cell if to eeprom
+            KILOVAC_OFF;
         }
         else
         {
@@ -286,11 +294,20 @@ void main()
         {
             // temperature discharge protection
             // shut off pack, write OT error and cell id to eeprom
+            KILOVAC_OFF;
         }
         else if (highest_temperature >= TEMP_WARNING)
         {
             // tempeature charge protection
             // disable charging
+            if (motor controller and mppt are connected)
+            {
+                turn off array, tell motor controller to disable regen
+            }
+            else
+            {
+                KILOVAC_OFF;
+            }
         }
         else
         {
@@ -304,11 +321,13 @@ void main()
         {
             // discharge current protection
             // shut off pack, write OC error to eeprom
+            KILOVAC_OFF;
         }
         else if (g_current <= CURRENT_CHARGE_LIMIT)
         {
             // charge current protection
             // shut off pack, write UC error to eeprom
+            KILOVAC_OFF;
         }
         else
         {
@@ -323,7 +342,6 @@ void main()
         delay_ms(10);
         balance();
         send_balancing_bits();
-        output_toggle(STATUS);
         delay_ms(200);*/
     }
 }
