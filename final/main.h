@@ -6,20 +6,21 @@
 #fuses WPRES32 // Watch Dog Timer PreScalar 1:32
 #fuses WPOSTS1 // Watch Dog Timer PostScalar 1:1
 #fuses CKSFSM  // Clock Switching is enabled, fail Safe clock monitor is enabled
+#fuses HS
 
 // Use internal oscillator for delay
 #use delay(internal = 20000000)
 
-// UART port (PIC24HJ128GP502)
-#use rs232(baud = 57600, UART1)
+// UART port (PIC24HJ256GP610A)
+#use rs232(baud = 9600, xmit = PIN_F3, rcv = PIN_F2)
 
 // SPI port 1: LTC6804-1
 #use spi(SPI1)
 #define CSBI1     PIN_D10 // LTC-1 chip select, active low
 #define CSBI2     PIN_A3  // LTC-2 chip select, active low
 #define CSBI3     PIN_A2  // LTC-3 chip select, active low
-#define MOSI_SEL0 PIN_D14 // Select between 3 MOSI lines
-#define MOSI_SEL1 PIN_D15
+#define MOSI_SEL0 PIN_D14 // Selects between 3 MOSI lines
+#define MOSI_SEL1 PIN_D15 // Selects between 3 MOSI lines
 
 // SPI port 2: ADS7952
 #use spi(SPI2)
@@ -41,6 +42,7 @@
 #define HALL_TEMP PIN_E1
 
 // Miscellaneous pins
+#define STATUS    PIN_E3  // Status LED
 #define TEST_LED1 PIN_E2  // Test LED
 #define TEST_LED2 PIN_G13 // Test LED
 #define KVAC_PIN  PIN_A13 // Kilovac control pin

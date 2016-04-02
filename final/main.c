@@ -237,23 +237,93 @@ void main()
     
     fan_init();
     
-    hall_sensor_init();
+    //hall_sensor_init();
 
     while (true)
     {
+        //ads7952_read_all_channels(g_adc_data);
+        //printf("\r\nasdf %Lx",g_adc_data[0]);
+        
+        putc(0x69);
+        
+        output_toggle(STATUS);
+        delay_ms(200);
+        
+        
+        // PROTECTION CODE
+        /*
+        // Find highest and lowest cell voltages
         ltc6804_read_cell_voltages(g_cell);
         average_voltage();
-        send_voltage_data();
-        delay_ms(10);
+        g_highest_voltage_cell_index = get_highest_voltage_cell_index();
+        g_lowest_voltage_cell_index = get_lowest_voltage_cell_index();
+        highest_voltage = g_cell[g_highest_voltage_cell_index].average_voltage;
+        lowest_voltage = g_cell[g_lowest_voltage_cell_index].average_voltage;
         
+        if (highest_voltage >= VOLTAGE_MAX)
+        {
+            // over voltage protection
+            // shut off pack and write OV error and cell id to eeprom
+        }
+        else if (lowest_voltage <= VOLTAGE_MIN)
+        {
+            // under voltage protection
+            // shut off pack and write UV error and cell if to eeprom
+        }
+        else
+        {
+            // cell voltages are fine, do nothing
+        }
+        
+        // Find highest temperature reading
         ads7952_read_all_channels(g_adc_data);
         convert_adc_data_to_temps();
-        send_temperature_data();
-        delay_ms(10);
+        g_highest_temperature_cell_index = get_highest_temperature_cell_index();
+        highest_temperature = g_adc_data[g_highest_temperature_cell_index];
         
+        if (highest_temperature >= TEMP_CRITICAL)
+        {
+            // temperature discharge protection
+            // shut off pack, write OT error and cell id to eeprom
+        }
+        else if (highest_temperature >= TEMP_WARNING)
+        {
+            // tempeature charge protection
+            // disable charging
+        }
+        else
+        {
+            // cell temperatures are fine, do nothing
+        }
+        
+        // Read the pack current
+        g_current = hall_sensor_read_data();
+        
+        if (g_current >= CURRENT_DISCHARGE_LIMIT)
+        {
+            // discharge current protection
+            // shut off pack, write OC error to eeprom
+        }
+        else if (g_current <= CURRENT_CHARGE_LIMIT)
+        {
+            // charge current protection
+            // shut off pack, write UC error to eeprom
+        }
+        else
+        {
+            // current is fine, do nothing
+        }
+        
+        // Send data to LabVIEW over uart
+        send_voltage_data();
+        delay_ms(10);
+        send_temperature_data();
+        //print_temperatures();
+        delay_ms(10);
         balance();
         send_balancing_bits();
-        delay_ms(200);
+        output_toggle(STATUS);
+        delay_ms(200);*/
     }
 }
 

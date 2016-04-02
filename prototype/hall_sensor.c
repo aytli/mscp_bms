@@ -7,21 +7,17 @@
 #define CURRENT_ZERO          2043
 #define CURRENT_SLOPE         12.64
 
-#define HALL_ADC_CHANNEL 1
+#define HALL_ADC_CHANNEL    1
+#define HALL_ANALOG_PIN  sAN1
 
-typedef struct
-{
-    unsigned int16 data;
-    unsigned int8  overCount;
-    unsigned int8  overFlag;
-} hall_data_t;
-
+// Initializes the hall effect sensor interface
 void hall_sensor_init(void)
 {
     setup_adc(ADC_CLOCK_INTERNAL);
-    setup_adc_ports(sAN1);
+    setup_adc_ports(HALL_ANALOG_PIN);
 }
 
+// Returns the calibrated current value from the raw adc reading
 float hall_sensor_adjust_current(unsigned int16 raw_current)
 {
    return ((float)raw_current - CURRENT_ZERO)/CURRENT_SLOPE;
@@ -38,7 +34,7 @@ unsigned int16 hall_sensor_read_data(void)
 {
     set_adc_channel(HALL_ADC_CHANNEL);
     delay_us(10);
-    return((unsigned int16) (read_adc()));
+    return((unsigned int16)(read_adc()));
 }
 
 #endif
