@@ -6,13 +6,13 @@
 #fuses WPRES32 // Watch Dog Timer PreScalar 1:32
 #fuses WPOSTS1 // Watch Dog Timer PostScalar 1:1
 #fuses CKSFSM  // Clock Switching is enabled, fail Safe clock monitor is enabled
-#fuses HS
+#fuses HS      // High speed oscillator frequency
 
-// Use internal oscillator for delay
-#use delay(internal = 20000000)
+// Using external oscillator
+#use delay(crystal = 20000000)
 
 // UART port (PIC24HJ256GP610A)
-#use rs232(baud = 9600, xmit = PIN_F3, rcv = PIN_F2)
+#use rs232(baud = 57600, xmit = PIN_F3, rcv = PIN_F2)
 
 // SPI port 1: LTC6804-1
 #use spi(SPI1)
