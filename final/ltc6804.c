@@ -133,6 +133,8 @@ void ltc6804_init(void)
     g_discharge2 = 0x0000;
     g_discharge3 = 0x0000;
     
+    init_PEC15_Table();
+    ltc6804_wakeup();
     output_low(CSBI1);
     ltc6804_write_config(g_discharge1);
     output_high(CSBI1);

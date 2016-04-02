@@ -37,7 +37,7 @@ static float          g_temps[N_ADC_CHANNELS];
 static int            g_highest_voltage_cell_index;
 static int            g_lowest_voltage_cell_index;
 
-// Timer 2 is used to send data to LabVIEW
+// Timer 2 is used to send LabVIEW data, and to perform charge balancing
 #int_timer2 level = 4
 void isr_timer2(void)
 {
@@ -235,13 +235,11 @@ void main()
     setup_spi(SPI_MASTER|SPI_SCK_IDLE_HIGH|SPI_CLK_DIV_12|SPI_XMIT_L_TO_H);
     setup_spi2(SPI_MASTER|SPI_SCK_IDLE_LOW|SPI_CLK_DIV_12|SPI_XMIT_L_TO_H);
     
-    init_PEC15_Table();
     init_cells();
-    ltc6804_wakeup();
     ltc6804_init();
     ads7952_init();
+    hall_sensor_init();
     fan_init();
-    //hall_sensor_init();
     
     // Connect the battery pack
     KILOVAC_ON;
