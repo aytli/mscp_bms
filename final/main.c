@@ -37,18 +37,18 @@ static float          g_temps[N_ADC_CHANNELS];
 static int            g_highest_voltage_cell_index;
 static int            g_lowest_voltage_cell_index;
 
-// Set up timer 2 as a millisecond timer
-int16 g_ms;
+// Timer 2 is used to send data to LabVIEW
 #int_timer2 level = 4
 void isr_timer2(void)
 {
-    g_ms++; //keep a running timer interupt that increments every milli-second
-    CLEAR_T2_FLAG;
-    if (g_ms >= HEARTBEAT_PERIOD_MS/2)
-    {
-        output_toggle(STATUS);
-        g_ms = 0;
-    }
+    // Send data to LabVIEW over uart
+    /*send_voltage_data();
+    delay_ms(10);
+    send_temperature_data();
+    delay_ms(10);
+    balance();
+    send_balancing_bits();*/
+    output_toggle(STATUS);
 }
 
 // Initializes the cells, clears all flags, resets highest and lowest cells
@@ -70,7 +70,7 @@ int get_highest_voltage_cell_index(void)
     int highest = 0;
     for (i = 0 ; i < N_CELLS ; i++)
     {
-        if (g_cell[i].voltage >= g_cell[highest].voltage)
+        if (g_cell[i].voltage >= g_cell[highest].average_voltage)
         {
             highest = i;
         }
@@ -227,8 +227,8 @@ void send_balancing_bits(void)
 // Main
 void main()
 {
-    // Set up and enable timer 2 to interrupt every 1ms using 20MHz clock
-    setup_timer2(TMR_INTERNAL|TMR_DIV_BY_256,39);
+    // Set up and enable timer 2 with a period of HEARTBEAT_PERIOD_MS
+    setup_timer2(TMR_INTERNAL|TMR_DIV_BY_256,39*HEARTBEAT_PERIOD_MS);
     enable_interrupts(INT_TIMER2);
 
     // Set up SPI ports
@@ -237,15 +237,14 @@ void main()
     
     init_PEC15_Table();
     init_cells();
-    
     ltc6804_wakeup();
     ltc6804_init();
-    
     ads7952_init();
-    
     fan_init();
-    
     //hall_sensor_init();
+    
+    // Connect the battery pack
+    KILOVAC_ON;
 
     while (true)
     {
@@ -332,17 +331,7 @@ void main()
         else
         {
             // current is fine, do nothing
-        }
-        
-        // Send data to LabVIEW over uart
-        send_voltage_data();
-        delay_ms(10);
-        send_temperature_data();
-        //print_temperatures();
-        delay_ms(10);
-        balance();
-        send_balancing_bits();
-        delay_ms(200);*/
+        }*/
     }
 }
 
