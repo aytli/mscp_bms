@@ -12,6 +12,7 @@
 #include "fan.c"
 #include "lcd.c"
 #include "hall_sensor.c"
+#include "eeprom.c"
 
 // PIC internal register addresses
 #word IFS0 = 0x0084
