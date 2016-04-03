@@ -41,9 +41,16 @@
 // Voltage threshold for balancing to occur (BALANCE_THRESHOLD / 100) V
 #define BALANCE_THRESHOLD 140
 
+// Unintuitive, but the mux is actually configured in this way according
+// to the schmatic:
+//
+// LTC_1: S[1:0] = 10 
+// LTC_2: S[1:0] = 01
+// LTC_3: S[1:0] = 00
+//
 #define SELECT_LTC_1        \
     output_low(MOSI_SEL0);  \
-    output_low(MOSI_SEL1);
+    output_high(MOSI_SEL1);
 
 #define SELECT_LTC_2        \
     output_high(MOSI_SEL0); \
@@ -51,7 +58,7 @@
 
 #define SELECT_LTC_3        \
     output_low(MOSI_SEL0);  \
-    output_high(MOSI_SEL1);
+    output_low(MOSI_SEL1);
 
 static int16 g_discharge1;
 static int16 g_discharge2;
