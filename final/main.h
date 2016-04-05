@@ -28,7 +28,7 @@
 #define ADC2_SEL  PIN_B9  // ADC-2, thermistors 12-23
 
 // I2C port: CAT24AA02
-#use i2c(I2C1, FAST)
+#use i2c(MASTER, SCL = PIN_G2, SDA = PIN_G3)
 #define WP_PIN    PIN_A6
 
 // LCD interface (4 bit mode)
@@ -47,7 +47,7 @@
 
 // Miscellaneous pins
 #define STATUS    PIN_E3  // Status LED
-#define TEST_LED1 PIN_E2  // Test LED
-#define TEST_LED2 PIN_G13 // Test LED
+#define TX_LED    PIN_E2  // Test LED (TX)
+#define RX_LED    PIN_G13 // Test LED (RX)
 #define KVAC_PIN  PIN_A13 // Kilovac control pin
 #define FAN_PIN   PIN_D7  // Fan PWM signal

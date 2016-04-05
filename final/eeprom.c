@@ -5,11 +5,14 @@
 #define I2C_READ_BIT  1
 
 // I2C address of the device, 0b101000 + LSB
-#define DEVICE_ADDRESS  0x60
+#define DEVICE_ADDRESS  0xA0
 
 // The device has memory addresses from 0x00 to 0x100
 #define ERROR_ADDRESS   0x00
 #define CELL_ID_ADDRESS 0x01
+
+// The EEPROM takes 5ms to write data to memory
+#define WRITE_TIME_MS 10
 
 // 8-bit error codes
 typedef enum
@@ -19,29 +22,28 @@ typedef enum
     OT_ERROR = 0x03,
     OC_ERROR = 0x04,
     UC_ERROR = 0x05,
+    TEST     = 0x69,
     SUCCESS  = 0xFF
 } eeprom_error_code_t;
 
 // Writes an error code to the eeprom
 void eeprom_write_error(eeprom_error_code_t error, int cell_id)
 {
-    output_low(WP_PIN);
-    
     // Write the error code
     i2c_start();
     i2c_write(DEVICE_ADDRESS|I2C_WRITE_BIT);
     i2c_write(ERROR_ADDRESS);
     i2c_write((int8)(error));
     i2c_stop();
+    delay_ms(WRITE_TIME_MS);
     
     // Write the cell id
     i2c_start();
     i2c_write(DEVICE_ADDRESS|I2C_WRITE_BIT);
     i2c_write(CELL_ID_ADDRESS);
-    i2c_write((int8)(error));
+    i2c_write((int8)(cell_id));
     i2c_stop();
-    
-    output_high(WP_PIN);
+    delay_ms(WRITE_TIME_MS);
 }
 
 // Reads an error code from the eeprom
@@ -50,16 +52,14 @@ eeprom_error_code_t eeprom_read_error(void)
     eeprom_error_code_t error;
     
     // Write the data address to the eeprom
-    output_low(WP_PIN);
     i2c_start();
     i2c_write(DEVICE_ADDRESS|I2C_WRITE_BIT);
-    i2c_write(CELL_ID_ADDRESS);
-    output_high(WP_PIN);
+    i2c_write(ERROR_ADDRESS);
     
     // Read a byte from the data address
     i2c_start();
     i2c_write(DEVICE_ADDRESS|I2C_READ_BIT);
-    error = (eeprom_error_code_t)(i2c_read());
+    error = (eeprom_error_code_t)(i2c_read(0));
     i2c_stop();
     
     return error;
@@ -71,16 +71,14 @@ int eeprom_read_id(void)
     int id;
     
     // Write the data address to the eeprom
-    output_low(WP_PIN);
     i2c_start();
     i2c_write(DEVICE_ADDRESS|I2C_WRITE_BIT);
     i2c_write(CELL_ID_ADDRESS);
-    output_high(WP_PIN);
     
     // Read a byte from the data address
     i2c_start();
     i2c_write(DEVICE_ADDRESS|I2C_READ_BIT);
-    id = i2c_read();
+    id = i2c_read(0);
     i2c_stop();
     
     return id;
@@ -88,5 +86,6 @@ int eeprom_read_id(void)
 
 void eeprom_clear(void)
 {
+    output_low(WP_PIN);
     eeprom_write_error(SUCCESS, 0xFF);
 }

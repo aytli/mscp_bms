@@ -244,16 +244,30 @@ void main()
     
     // Connect the battery pack
     KILOVAC_ON;
-
+    
+    lcd_init();
+    
+    int8 error;
+    int8 id;
+    
     while (true)
     {
-        //ads7952_read_all_channels(g_adc_data);
-        //printf("\r\nasdf %Lx",g_adc_data[0]);
+        eeprom_write_error(0x04,0x69);
+        error = (int8)(eeprom_read_error());
+        id = (int8)(eeprom_read_id());
         
-        putc(0x69);
-        //printf("\r\nasdfasdfasdfasdf");
-        delay_ms(200);
+        //itoa(error,16,error_str);
+        //itoa(id,16,id_str);
         
+        //lcd_set_cursor_position(0,0);
+        //lcd_write("ERROR: ");
+        //lcd_write(error_str);
+        //lcd_set_cursor_position(1,0);
+        //lcd_write("ID: ");
+        //lcd_write(id_str);
+        
+        output_toggle(TX_LED);
+        delay_ms(100);
         
         // PROTECTION CODE
         /*
