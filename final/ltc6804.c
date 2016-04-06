@@ -49,16 +49,16 @@
 // LTC_3: S[1:0] = 00
 //
 #define SELECT_LTC_1        \
-    output_low(MOSI_SEL0);  \
-    output_high(MOSI_SEL1);
+    output_low(MISO_SEL0);  \
+    output_high(MISO_SEL1);
 
 #define SELECT_LTC_2        \
-    output_high(MOSI_SEL0); \
-    output_low(MOSI_SEL1);
+    output_high(MISO_SEL0); \
+    output_low(MISO_SEL1);
 
 #define SELECT_LTC_3        \
-    output_low(MOSI_SEL0);  \
-    output_low(MOSI_SEL1);
+    output_low(MISO_SEL0);  \
+    output_low(MISO_SEL1);
 
 static int16 g_discharge1;
 static int16 g_discharge2;
@@ -305,7 +305,7 @@ void ltc6804_read_cell_voltages(cell_t * cell)
     }    
     spi_read(0xFF); // PEC1
     spi_read(0xFF); // PEC2
-    output_high(CSBI2);
+    output_high(CSBI3);
 }
 
 #endif

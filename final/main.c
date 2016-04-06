@@ -24,21 +24,39 @@
 #define VOLTAGE_ID  0x5A
 #define TEMP_ID     0x69
 #define BALANCE_ID  0x41
+#define CURRENT_ID  0xE7
 
 // Kilovac control
 #define KILOVAC_ON  output_high(KVAC_PIN);
 #define KILOVAC_OFF output_low(KVAC_PIN);
 
+// Protection limits
+#define VOLTAGE_MAX            42000 // 4.20V
+#define VOLTAGE_MIN            27500 // 2.75V
+#define TEMP_WARNING              60 // 60°C, actual value to be determined
+#define TEMP_CRITICAL             70 // 70°C, actual value to be determined
+#define CURRENT_DISCHARGE_LIMIT 1000 // -80A, actual value to be determined
+#define CURRENT_CHARGE_LIMIT    4000 // +40A, actual value to be determined
+
 // Status LED blink period
 #define HEARTBEAT_PERIOD_MS 500
+
+// Returns 1 only if voltage, temperature, and current are all within the safe
+// operating ranges
+#define SAFETY_CHECK (check_voltage() & check_temperature() & check_current())
 
 static cell_t         g_cell[N_CELLS];
 static unsigned int16 g_adc_data[N_ADC_CHANNELS];
 static float          g_temps[N_ADC_CHANNELS];
 static int            g_highest_voltage_cell_index;
 static int            g_lowest_voltage_cell_index;
+static int            g_highest_temperature_cell_index;
+static unsigned int16 g_highest_voltage;
+static unsigned int16 g_lowest_voltage;
+static float          g_highest_temperature;
+static unsigned int16 g_current;
 
-// Timer 2 is used to send LabVIEW data, and to perform charge balancing
+// Timer 2 is used to send LabVIEW data
 #int_timer2 level = 4
 void isr_timer2(void)
 {
@@ -47,7 +65,8 @@ void isr_timer2(void)
     delay_ms(10);
     send_temperature_data();
     delay_ms(10);
-    balance();
+    send_current_data();
+    delay_ms(10);
     send_balancing_bits();*/
     output_toggle(STATUS);
 }
@@ -62,6 +81,11 @@ void init_cells(void)
     }
     g_highest_voltage_cell_index = 0;
     g_lowest_voltage_cell_index = 0;
+    g_highest_temperature_cell_index = 0;
+    g_highest_voltage = 0;
+    g_lowest_voltage = 0;
+    g_highest_temperature = 0;
+    g_current = 0;
 }
 
 // Returns the index for the highest voltage cell
@@ -92,6 +116,20 @@ int get_lowest_voltage_cell_index(void)
         }
     }
     return lowest;
+}
+
+int get_highest_temperature_cell_index(void)
+{
+    int i;
+    int highest = 0;
+    for (i = 0 ; i < N_ADC_CHANNELS ; i++)
+    {
+        if (g_temps[i] >= g_temps[highest])
+        {
+            highest = i;
+        }
+    }
+    return highest;
 }
 
 // Use the simplified Steinhart-Hart equation to approximate temperatures
@@ -213,6 +251,13 @@ void send_temperature_data(void)
     }
 }
 
+void send_current_data(void)
+{
+    putc(CURRENT_ID);
+    putc((int8)(g_current&0xFF));
+    putc((int8)((g_current>>8)&0xFF));
+}
+
 void send_balancing_bits(void)
 {
     int32 discharge = (g_discharge1&0x000FFF)
@@ -225,126 +270,211 @@ void send_balancing_bits(void)
     putc((int8)((discharge>>24)&0x3F));
 }
 
+int1 check_voltage(void)
+{
+    // Find highest and lowest cell voltages
+    ltc6804_read_cell_voltages(g_cell);
+    average_voltage();
+    g_highest_voltage_cell_index = get_highest_voltage_cell_index();
+    g_lowest_voltage_cell_index = get_lowest_voltage_cell_index();
+    g_highest_voltage = g_cell[g_highest_voltage_cell_index].average_voltage;
+    g_lowest_voltage = g_cell[g_lowest_voltage_cell_index].average_voltage;
+    
+    if (g_highest_voltage >= VOLTAGE_MAX)
+    {
+        // over voltage protection
+        // shut off pack and write OV error and cell id to eeprom
+        return 0;
+    }
+    else if (g_lowest_voltage <= VOLTAGE_MIN)
+    {
+        // under voltage protection
+        // shut off pack and write UV error and cell if to eeprom
+        return 0;
+    }
+    else
+    {
+        // cell voltages are fine
+        return 1;
+    }
+}
+
+int1 check_temperature(void)
+{
+    // Find highest temperature reading
+    ads7952_read_all_channels(g_adc_data);
+    convert_adc_data_to_temps();
+    g_highest_temperature_cell_index = get_highest_temperature_cell_index();
+    g_highest_temperature = g_temps[g_highest_temperature_cell_index];
+    
+    if (g_highest_temperature >= TEMP_CRITICAL)
+    {
+        // temperature discharge protection
+        // shut off pack, write OT error and cell id to eeprom
+        return 0;
+    }
+    else if (g_highest_temperature >= TEMP_WARNING)
+    {
+        // tempeature charge protection
+        // disable charging
+        //if (motor controller and mppt are connected)
+        if (true)
+        {
+            //turn off array, tell motor controller to disable regen
+            return 0;
+        }
+        else
+        {
+            return 1;
+        }
+    }
+    else
+    {
+        // cell temperatures are fine
+        return 1;
+    }
+}
+
+int1 check_current(void)
+{
+    // Read the pack current
+    g_current = hall_sensor_read_data();
+    
+    // Hall effect sensor is uncalibrated
+    // This function will always return true until calibration is done
+    return 1;
+    
+    /*if (g_current >= CURRENT_DISCHARGE_LIMIT)
+    {
+        // discharge current protection
+        // shut off pack, write OC error to eeprom
+        return 0;
+    }
+    else if (g_current <= CURRENT_CHARGE_LIMIT)
+    {
+        // charge current protection
+        // shut off pack, write UC error to eeprom
+        return 0;
+    }
+    else
+    {
+        // current is fine
+        return 1;
+    }*/
+}
+
 // Main
 void main()
 {
-    // Set up and enable timer 2 with a period of HEARTBEAT_PERIOD_MS
-    setup_timer2(TMR_INTERNAL|TMR_DIV_BY_256,39*HEARTBEAT_PERIOD_MS);
-    enable_interrupts(INT_TIMER2);
-
-    // Set up SPI ports
-    setup_spi(SPI_MASTER|SPI_SCK_IDLE_HIGH|SPI_CLK_DIV_12|SPI_XMIT_L_TO_H);
-    setup_spi2(SPI_MASTER|SPI_SCK_IDLE_LOW|SPI_CLK_DIV_12|SPI_XMIT_L_TO_H);
+    int i;
+    
+    // Kilovac is initially disabled
+    KILOVAC_OFF;
     
     init_cells();
     ltc6804_init();
     ads7952_init();
     hall_sensor_init();
+    lcd_init();
     fan_init();
     
-    // Connect the battery pack
-    KILOVAC_ON;
+    // Populate running average
+    for (i = 0 ; i < N_SAMPLES ; i++)
+    {
+        ltc6804_read_cell_voltages(g_cell);
+        average_voltage();
+    }
     
-    lcd_init();
-    
-    int8 error;
-    int8 id;
+    // Perform startup test
+    if (SAFETY_CHECK == 1)
+    {
+        // Voltage, temperature, and current are all safe, connect the pack
+        delay_ms(500);
+        KILOVAC_ON;
+        printf("SUCCESS");
+        // Set up and enable timer 2 with a period of HEARTBEAT_PERIOD_MS
+        setup_timer2(TMR_INTERNAL|TMR_DIV_BY_256,39*HEARTBEAT_PERIOD_MS);
+        enable_interrupts(INT_TIMER2);
+    }
+    else
+    {
+        // Something went wrong, do not connect the pack
+        KILOVAC_OFF;
+    }
     
     while (true)
     {
-        eeprom_write_error(0x04,0x69);
-        error = (int8)(eeprom_read_error());
-        id = (int8)(eeprom_read_id());
-        
-        //itoa(error,16,error_str);
-        //itoa(id,16,id_str);
-        
-        //lcd_set_cursor_position(0,0);
-        //lcd_write("ERROR: ");
-        //lcd_write(error_str);
-        //lcd_set_cursor_position(1,0);
-        //lcd_write("ID: ");
-        //lcd_write(id_str);
-        
         output_toggle(TX_LED);
-        delay_ms(100);
+        delay_ms(200);
         
-        // PROTECTION CODE
-        /*
-        // Find highest and lowest cell voltages
-        ltc6804_read_cell_voltages(g_cell);
-        average_voltage();
-        g_highest_voltage_cell_index = get_highest_voltage_cell_index();
-        g_lowest_voltage_cell_index = get_lowest_voltage_cell_index();
-        highest_voltage = g_cell[g_highest_voltage_cell_index].average_voltage;
-        lowest_voltage = g_cell[g_lowest_voltage_cell_index].average_voltage;
-        
-        if (highest_voltage >= VOLTAGE_MAX)
+        if (SAFETY_CHECK)
         {
-            // over voltage protection
-            // shut off pack and write OV error and cell id to eeprom
-            KILOVAC_OFF;
-        }
-        else if (lowest_voltage <= VOLTAGE_MIN)
-        {
-            // under voltage protection
-            // shut off pack and write UV error and cell if to eeprom
-            KILOVAC_OFF;
+            // Operating levels are safe, balance the cells
+            balance();
+            delay_ms(100);
         }
         else
         {
-            // cell voltages are fine, do nothing
+            // Something went wrong
+            ltc6804_init(); // Disable balancing
+            KILOVAC_OFF;    // Turn off pack
         }
         
-        // Find highest temperature reading
-        ads7952_read_all_channels(g_adc_data);
-        convert_adc_data_to_temps();
-        g_highest_temperature_cell_index = get_highest_temperature_cell_index();
-        highest_temperature = g_adc_data[g_highest_temperature_cell_index];
-        
-        if (highest_temperature >= TEMP_CRITICAL)
+        // Display data
+        for (i = 0 ; i < 12 ; i++)
         {
-            // temperature discharge protection
-            // shut off pack, write OT error and cell id to eeprom
-            KILOVAC_OFF;
-        }
-        else if (highest_temperature >= TEMP_WARNING)
-        {
-            // tempeature charge protection
-            // disable charging
-            if (motor controller and mppt are connected)
+            printf("\r\nVOLTAGE:\t%Lu",g_cell[i].average_voltage);
+            ((g_discharge1>>i)&1) ? printf(" 1") : printf(" 0");
+            if (i == g_highest_voltage_cell_index)
             {
-                turn off array, tell motor controller to disable regen
+                printf(" hi");
+            }
+            else if (i == g_lowest_voltage_cell_index)
+            {
+                printf(" lo");
             }
             else
             {
-                KILOVAC_OFF;
+                printf("   ");
+            }
+            printf("\t\tTEMPERATURE:\t%Lu\t%f",g_adc_data[i],g_temps[i]);
+        }
+        for (i = 12 ; i < 24 ; i++)
+        {
+            printf("\r\nVOLTAGE:\t%Lu",g_cell[i].average_voltage);
+            ((g_discharge2>>(i-12))&1) ? printf(" 1") : printf(" 0");
+            if (i == g_highest_voltage_cell_index)
+            {
+                printf(" hi");
+            }
+            else if (i == g_lowest_voltage_cell_index)
+            {
+                printf(" lo");
+            }
+            else
+            {
+                printf("   ");
+            }
+            printf("\t\tTEMPERATURE:\t%Lu\t%f",g_adc_data[i],g_temps[i]);
+        }
+        for (i = 24 ; i < N_CELLS ; i++)
+        {
+            printf("\r\nVOLTAGE:\t%Lu",g_cell[i].voltage);
+            ((g_discharge3>>(i-24))&1) ? printf(" 1") : printf(" 0");
+            if (i == g_highest_voltage_cell_index)
+            {
+                printf(" hi");
+            }
+            else if (i == g_lowest_voltage_cell_index)
+            {
+                printf(" lo");
+            }
+            else
+            {
+                printf("   ");
             }
         }
-        else
-        {
-            // cell temperatures are fine, do nothing
-        }
-        
-        // Read the pack current
-        g_current = hall_sensor_read_data();
-        
-        if (g_current >= CURRENT_DISCHARGE_LIMIT)
-        {
-            // discharge current protection
-            // shut off pack, write OC error to eeprom
-            KILOVAC_OFF;
-        }
-        else if (g_current <= CURRENT_CHARGE_LIMIT)
-        {
-            // charge current protection
-            // shut off pack, write UC error to eeprom
-            KILOVAC_OFF;
-        }
-        else
-        {
-            // current is fine, do nothing
-        }*/
+        printf("\r\n\nCURRENT:\t%Lu",g_current);
     }
 }
 

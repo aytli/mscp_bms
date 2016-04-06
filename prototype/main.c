@@ -32,6 +32,9 @@
 #define CURRENT_DISCHARGE_LIMIT 1031  // -80A, actual value to be determined
 #define CURRENT_CHARGE_LIMIT    2546  // +40A, actual value to be determined
 
+// Heartbeat frequency
+#define HEARTBEAT_PERIOD_MS 500
+
 static cell_t         g_cell[N_CELLS];
 static unsigned int16 g_adc_data[N_ADC_CHANNELS];
 static unsigned int16 g_current;
@@ -39,15 +42,6 @@ static float          g_temps[N_ADC_CHANNELS];
 static int            g_highest_voltage_cell_index;
 static int            g_lowest_voltage_cell_index;
 static int            g_highest_temperature_cell_index;
-
-// Set up timer 2 as a millisecond timer
-int16 g_ms;
-#int_timer2 level = 4
-void isr_timer2(void)
-{
-    g_ms++; //keep a running timer interupt that increments every milli-second
-    CLEAR_T2_FLAG;
-}
 
 // Initializes the cells, clears all flags, resets highest and lowest cells
 void init_cells(void)
@@ -252,6 +246,20 @@ void send_balancing_bits(void)
     putc((int8)((discharge>>24)&0xFF));
 }
 
+// Timer 2 is used to send LabVIEW data, and to perform charge balancing
+#int_timer2 level = 4
+void isr_timer2(void)
+{
+    // Send data to LabVIEW over uart
+    send_voltage_data();
+    delay_ms(10);
+    send_temperature_data();
+    delay_ms(10);
+    //balance();
+    send_balancing_bits();
+    output_toggle(TEST_LED2);
+}
+
 // Main
 void main()
 {
@@ -259,8 +267,8 @@ void main()
     unsigned int16 lowest_voltage;
     unsigned int16 highest_temperature;
     
-    // Set up and enable timer 2 to interrupt every 1ms using 20MHz clock
-    setup_timer2(TMR_INTERNAL|TMR_DIV_BY_256,39);
+    // Set up and enable timer 2 with a period of HEARTBEAT_PERIOD_MS
+    setup_timer2(TMR_INTERNAL|TMR_DIV_BY_256,39*HEARTBEAT_PERIOD_MS);
     enable_interrupts(INT_TIMER2);
 
     // Set up SPI ports
@@ -276,7 +284,7 @@ void main()
     
     while (true)
     {
-        // Find highest and lowest cell voltages
+        /*// Find highest and lowest cell voltages
         ltc6804_read_cell_voltages(g_cell);
         average_voltage();
         g_highest_voltage_cell_index = get_highest_voltage_cell_index();
@@ -336,18 +344,10 @@ void main()
         else
         {
             // current is fine, do nothing
-        }
+        }*/
         
-        // Send data to LabVIEW over uart
-        send_voltage_data();
-        delay_ms(10);
-        send_temperature_data();
-        //print_temperatures();
-        delay_ms(10);
-        balance();
-        send_balancing_bits();
-        output_toggle(TEST_LED2);
-        delay_ms(200);
+        ltc6804_read_cell_voltages(g_cell);
+        average_voltage();
     }
 }
 

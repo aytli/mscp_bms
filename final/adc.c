@@ -69,7 +69,7 @@ void ads7952_read_all_channels(unsigned int16 * buf)
         output_high(ADC1_SEL);
         
         ch = msb >> 4;
-        buf[ch] = ((0xF & msb) << 8 ) | lsb;
+        buf[ch] = ((0x0F & msb) << 8 ) | lsb;
     }
     
     for (i = 12 ; i < 24 ; i ++)
@@ -90,7 +90,7 @@ void ads7952_read_all_channels(unsigned int16 * buf)
         output_high(ADC2_SEL);
         
         ch = msb >> 4;
-        buf[ch + 12] = ((0xF & msb) << 8 ) | lsb;
+        buf[ch + 12] = ((0x0F & msb) << 8 ) | lsb;
     }
 }
 
