@@ -5,9 +5,12 @@
 #define TEMP_ID       0x69
 #define BALANCE_ID    0x41
 #define CURRENT_ID    0xE7
+#define STATUS_ID     0x77
 
 #define N_CELLS        30
 #define N_ADC_CHANNELS 24
+
+static int1 g_status = 0;
 
 void send_voltage_data(void)
 {
@@ -47,6 +50,12 @@ void send_balancing_bits(void)
     putc((int8)((discharge>>24)&0x3F));
 }
 
+void send_status(void)
+{
+    putc(STATUS_ID);
+    putc(g_status);
+}
+
 void main()
 {
     while(true)
@@ -58,7 +67,11 @@ void main()
         send_current_data();
         delay_ms(10);
         send_balancing_bits();
+        delay_ms(10);
+        send_status();
         output_toggle(HEARTBEAT_LED);
-        delay_ms(100);
+        delay_ms(200);
+        
+        g_status = !g_status;
     }
 }
