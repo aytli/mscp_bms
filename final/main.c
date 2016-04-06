@@ -27,8 +27,8 @@
 #define CURRENT_ID  0xE7
 
 // Kilovac control
-#define KILOVAC_ON  output_high(KVAC_PIN);
-#define KILOVAC_OFF output_low(KVAC_PIN);
+#define KILOVAC_ON  output_high(RX_LED);//output_high(KVAC_PIN);
+#define KILOVAC_OFF output_low(RX_LED); //output_low(KVAC_PIN);
 
 // Protection limits
 #define VOLTAGE_MAX            42000 // 4.20V
@@ -55,21 +55,6 @@ static unsigned int16 g_highest_voltage;
 static unsigned int16 g_lowest_voltage;
 static float          g_highest_temperature;
 static unsigned int16 g_current;
-
-// Timer 2 is used to send LabVIEW data
-#int_timer2 level = 4
-void isr_timer2(void)
-{
-    // Send data to LabVIEW over uart
-    /*send_voltage_data();
-    delay_ms(10);
-    send_temperature_data();
-    delay_ms(10);
-    send_current_data();
-    delay_ms(10);
-    send_balancing_bits();*/
-    output_toggle(STATUS);
-}
 
 // Initializes the cells, clears all flags, resets highest and lowest cells
 void init_cells(void)
@@ -363,6 +348,21 @@ int1 check_current(void)
     }*/
 }
 
+// Timer 2 is used to send LabVIEW data
+#int_timer2 level = 4
+void isr_timer2(void)
+{
+    // Send data to LabVIEW over uart
+    send_voltage_data();
+    delay_ms(10);
+    send_temperature_data();
+    delay_ms(10);
+    send_current_data();
+    delay_ms(10);
+    send_balancing_bits();
+    output_toggle(STATUS);
+}
+
 // Main
 void main()
 {
@@ -370,6 +370,10 @@ void main()
     
     // Kilovac is initially disabled
     KILOVAC_OFF;
+    
+    // Set up and enable timer 2 with a period of HEARTBEAT_PERIOD_MS
+    setup_timer2(TMR_INTERNAL|TMR_DIV_BY_256,39*HEARTBEAT_PERIOD_MS);
+    enable_interrupts(INT_TIMER2);
     
     init_cells();
     ltc6804_init();
@@ -391,10 +395,6 @@ void main()
         // Voltage, temperature, and current are all safe, connect the pack
         delay_ms(500);
         KILOVAC_ON;
-        printf("SUCCESS");
-        // Set up and enable timer 2 with a period of HEARTBEAT_PERIOD_MS
-        setup_timer2(TMR_INTERNAL|TMR_DIV_BY_256,39*HEARTBEAT_PERIOD_MS);
-        enable_interrupts(INT_TIMER2);
     }
     else
     {
@@ -405,13 +405,13 @@ void main()
     while (true)
     {
         output_toggle(TX_LED);
-        delay_ms(200);
         
         if (SAFETY_CHECK)
         {
             // Operating levels are safe, balance the cells
             balance();
-            delay_ms(100);
+            KILOVAC_ON; // REMOVE THIS LINE, FOR TESTING ONLY
+            //delay_ms(100);
         }
         else
         {
@@ -421,7 +421,7 @@ void main()
         }
         
         // Display data
-        for (i = 0 ; i < 12 ; i++)
+        /*for (i = 0 ; i < 12 ; i++)
         {
             printf("\r\nVOLTAGE:\t%Lu",g_cell[i].average_voltage);
             ((g_discharge1>>i)&1) ? printf(" 1") : printf(" 0");
@@ -474,7 +474,7 @@ void main()
                 printf("   ");
             }
         }
-        printf("\r\n\nCURRENT:\t%Lu",g_current);
+        printf("\r\n\nCURRENT:\t%Lu\r\n\n",g_current);*/
     }
 }
 
