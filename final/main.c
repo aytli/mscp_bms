@@ -5,6 +5,7 @@
 
 // Includes
 #include "main.h"
+#include "stdlib.h"
 #include "math.h"
 #include "pec.c"
 #include "ltc6804.c"
@@ -25,10 +26,19 @@
 #define TEMP_ID     0x69
 #define BALANCE_ID  0x41
 #define CURRENT_ID  0xE7
+#define STATUS_ID   0x77
 
 // Kilovac control
-#define KILOVAC_ON  output_high(RX_LED);//output_high(KVAC_PIN);
-#define KILOVAC_OFF output_low(RX_LED); //output_low(KVAC_PIN);
+#define KILOVAC_ON         \
+    g_status = 1;          \
+    output_high(RX_LED);   \
+    output_high(KVAC_PIN);
+
+#define KILOVAC_OFF        \
+    g_status = 0;          \
+    output_low(RX_LED);    \
+    output_low(KVAC_PIN);  \
+    eeprom_write_errors();
 
 // Protection limits
 #define VOLTAGE_MAX            42000 // 4.20V
@@ -55,9 +65,11 @@ static unsigned int16 g_highest_voltage;
 static unsigned int16 g_lowest_voltage;
 static float          g_highest_temperature;
 static unsigned int16 g_current;
+static int1           gb_lcd_connected;
+static int1           g_status;
 
 // Initializes the cells, clears all flags, resets highest and lowest cells
-void init_cells(void)
+void main_init(void)
 {
     int i;
     for (i = 0 ; i < N_CELLS ; i++)
@@ -71,6 +83,8 @@ void init_cells(void)
     g_lowest_voltage = 0;
     g_highest_temperature = 0;
     g_current = 0;
+    gb_lcd_connected = false;
+    g_status = 0;
 }
 
 // Returns the index for the highest voltage cell
@@ -141,8 +155,6 @@ void convert_adc_data_to_temps(void)
 // the lowest voltage
 void balance(void)
 {
-    ltc6804_read_cell_voltages(g_cell);
-    
     int i;
     int min_idx = get_lowest_voltage_cell_index();
 
@@ -255,6 +267,12 @@ void send_balancing_bits(void)
     putc((int8)((discharge>>24)&0x3F));
 }
 
+void send_status(void)
+{
+    putc(STATUS_ID);
+    putc(g_status);
+}
+
 int1 check_voltage(void)
 {
     // Find highest and lowest cell voltages
@@ -269,12 +287,14 @@ int1 check_voltage(void)
     {
         // over voltage protection
         // shut off pack and write OV error and cell id to eeprom
+        eeprom_set_ov_error((int8)(g_highest_voltage_cell_index));
         return 0;
     }
     else if (g_lowest_voltage <= VOLTAGE_MIN)
     {
         // under voltage protection
         // shut off pack and write UV error and cell if to eeprom
+        eeprom_set_uv_error((int8)(g_lowest_voltage_cell_index));
         return 0;
     }
     else
@@ -296,6 +316,7 @@ int1 check_temperature(void)
     {
         // temperature discharge protection
         // shut off pack, write OT error and cell id to eeprom
+        eeprom_set_ot_error((int8)(g_highest_temperature_cell_index));
         return 0;
     }
     else if (g_highest_temperature >= TEMP_WARNING)
@@ -306,6 +327,7 @@ int1 check_temperature(void)
         if (true)
         {
             //turn off array, tell motor controller to disable regen
+            eeprom_set_ot_error((int8)(g_highest_temperature_cell_index));
             return 0;
         }
         else
@@ -333,19 +355,58 @@ int1 check_current(void)
     {
         // discharge current protection
         // shut off pack, write OC error to eeprom
+        eeprom_set_current_error(OC_ERROR);
         return 0;
     }
     else if (g_current <= CURRENT_CHARGE_LIMIT)
     {
         // charge current protection
         // shut off pack, write UC error to eeprom
+        eeprom_set_current_error(UC_ERROR);
         return 0;
     }
     else
     {
         // current is fine
+        eeprom_set_current_error(CURRENT_SUCCESS);
         return 1;
     }*/
+}
+
+// Reads error data from the eeprom and displays it on the lcd
+void display_errors(void)
+{
+    int byt;
+    int bit;
+    int id;
+    char str[3];
+    unsigned int8 errors[N_ERROR_BYTES];
+    eeprom_read(errors);
+    
+    lcd_init();
+    
+    lcd_set_cursor_position(0,0);
+    lcd_write("OV: ");
+    itoa(errors[0],10,str);
+    lcd_write(str);
+    
+    lcd_set_cursor_position(1,0);
+    lcd_write("UV: ");
+    itoa(errors[1],10,str);
+    lcd_write(str);
+    
+    lcd_set_cursor_position(2,0);
+    lcd_write("OT: ");
+    itoa(errors[2],10,str);
+    lcd_write(str);
+    
+    lcd_set_cursor_position(3,0);
+    lcd_write("CURRENT: ");
+    itoa(errors[3],10,str);
+    lcd_write(str);
+    
+    // Clear the eeprom after errors are read
+    eeprom_clear();
 }
 
 // Timer 2 is used to send LabVIEW data
@@ -354,13 +415,26 @@ void isr_timer2(void)
 {
     // Send data to LabVIEW over uart
     send_voltage_data();
-    delay_ms(10);
+    delay_ms(1);
     send_temperature_data();
-    delay_ms(10);
+    delay_ms(1);
     send_current_data();
-    delay_ms(10);
+    delay_ms(1);
     send_balancing_bits();
-    output_toggle(STATUS);
+    delay_ms(1);
+    send_status();
+    output_toggle(STATUS);    
+    
+    if (input_state(LCD_SIG) == 1)
+    {
+        delay_ms(100);
+        if ((input_state(LCD_SIG) == 1) && (gb_lcd_connected == false))
+        {
+            gb_lcd_connected = true;
+            delay_ms(200);
+            display_errors();
+        }
+    }
 }
 
 // Main
@@ -375,11 +449,10 @@ void main()
     setup_timer2(TMR_INTERNAL|TMR_DIV_BY_256,39*HEARTBEAT_PERIOD_MS);
     enable_interrupts(INT_TIMER2);
     
-    init_cells();
+    main_init();
     ltc6804_init();
     ads7952_init();
     hall_sensor_init();
-    lcd_init();
     fan_init();
     
     // Populate running average
@@ -411,7 +484,7 @@ void main()
             // Operating levels are safe, balance the cells
             balance();
             KILOVAC_ON; // REMOVE THIS LINE, FOR TESTING ONLY
-            //delay_ms(100);
+            delay_ms(100);
         }
         else
         {
@@ -419,62 +492,6 @@ void main()
             ltc6804_init(); // Disable balancing
             KILOVAC_OFF;    // Turn off pack
         }
-        
-        // Display data
-        /*for (i = 0 ; i < 12 ; i++)
-        {
-            printf("\r\nVOLTAGE:\t%Lu",g_cell[i].average_voltage);
-            ((g_discharge1>>i)&1) ? printf(" 1") : printf(" 0");
-            if (i == g_highest_voltage_cell_index)
-            {
-                printf(" hi");
-            }
-            else if (i == g_lowest_voltage_cell_index)
-            {
-                printf(" lo");
-            }
-            else
-            {
-                printf("   ");
-            }
-            printf("\t\tTEMPERATURE:\t%Lu\t%f",g_adc_data[i],g_temps[i]);
-        }
-        for (i = 12 ; i < 24 ; i++)
-        {
-            printf("\r\nVOLTAGE:\t%Lu",g_cell[i].average_voltage);
-            ((g_discharge2>>(i-12))&1) ? printf(" 1") : printf(" 0");
-            if (i == g_highest_voltage_cell_index)
-            {
-                printf(" hi");
-            }
-            else if (i == g_lowest_voltage_cell_index)
-            {
-                printf(" lo");
-            }
-            else
-            {
-                printf("   ");
-            }
-            printf("\t\tTEMPERATURE:\t%Lu\t%f",g_adc_data[i],g_temps[i]);
-        }
-        for (i = 24 ; i < N_CELLS ; i++)
-        {
-            printf("\r\nVOLTAGE:\t%Lu",g_cell[i].voltage);
-            ((g_discharge3>>(i-24))&1) ? printf(" 1") : printf(" 0");
-            if (i == g_highest_voltage_cell_index)
-            {
-                printf(" hi");
-            }
-            else if (i == g_lowest_voltage_cell_index)
-            {
-                printf(" lo");
-            }
-            else
-            {
-                printf("   ");
-            }
-        }
-        printf("\r\n\nCURRENT:\t%Lu\r\n\n",g_current);*/
     }
 }
 

@@ -1,3 +1,6 @@
+#ifndef EEPROM_C
+#define EEPROM_C
+
 // 2Kb I2C serial CMOS eeprom: CAT24AA02
 // Datasheet: http://www.onsemi.com/pub_link/Collateral/CAT24AA01-D.PDF
 
@@ -8,84 +11,94 @@
 #define DEVICE_ADDRESS  0xA0
 
 // The device has memory addresses from 0x00 to 0x100
-#define ERROR_ADDRESS   0x00
-#define CELL_ID_ADDRESS 0x01
+#define BASE_ADDRESS    0x00
+#define OV_ADDRESS      0x00
+#define UV_ADDRESS      0x04
+#define OT_ADDRESS      0x08
+#define CURRENT_ADDRESS 0x0B
+
+// The eeprom will store 4 bytes of error data
+#define N_ERROR_BYTES 4
 
 // The EEPROM takes 5ms to write data to memory
-#define WRITE_TIME_MS 10
+#define WRITE_TIME_MS 5
 
-// 8-bit error codes
 typedef enum
 {
-    OV_ERROR = 0x01,
-    UV_ERROR = 0x02,
-    OT_ERROR = 0x03,
-    OC_ERROR = 0x04,
-    UC_ERROR = 0x05,
-    TEST     = 0x69,
-    SUCCESS  = 0xFF
-} eeprom_error_code_t;
+    OC_ERROR        = 1,
+    UC_ERROR        = 2,
+    CURRENT_SUCCESS = 0xFF
+} current_error_t;
+
+static int8 g_ov_error;
+static int8 g_uv_error;
+static int8 g_ot_error;
+static int8 g_current_error;
 
 // Writes an error code to the eeprom
-void eeprom_write_error(eeprom_error_code_t error, int cell_id)
+void eeprom_write_errors(void)
 {
     // Write the error code
     i2c_start();
     i2c_write(DEVICE_ADDRESS|I2C_WRITE_BIT);
-    i2c_write(ERROR_ADDRESS);
-    i2c_write((int8)(error));
+    i2c_write(BASE_ADDRESS);
+    i2c_write(g_ov_error);              // Byte 0  - OV error
+    i2c_write(g_uv_error);              // Byte 1  - UV error
+    i2c_write(g_ot_error);              // Byte 2  - OT error
+    i2c_write((int8)(g_current_error)); // Byte 3 - Current error
     i2c_stop();
-    delay_ms(WRITE_TIME_MS);
-    
-    // Write the cell id
-    i2c_start();
-    i2c_write(DEVICE_ADDRESS|I2C_WRITE_BIT);
-    i2c_write(CELL_ID_ADDRESS);
-    i2c_write((int8)(cell_id));
-    i2c_stop();
-    delay_ms(WRITE_TIME_MS);
 }
 
-// Reads an error code from the eeprom
-eeprom_error_code_t eeprom_read_error(void)
+// Reads the contents of the eeprom
+void eeprom_read(int8 * data)
 {
-    eeprom_error_code_t error;
+    int i;
     
     // Write the data address to the eeprom
     i2c_start();
     i2c_write(DEVICE_ADDRESS|I2C_WRITE_BIT);
-    i2c_write(ERROR_ADDRESS);
+    i2c_write(BASE_ADDRESS);
     
-    // Read a byte from the data address
+    // Read the contents of the eeprom memory
     i2c_start();
     i2c_write(DEVICE_ADDRESS|I2C_READ_BIT);
-    error = (eeprom_error_code_t)(i2c_read(0));
+    
+    for (i = 0 ; i < N_ERROR_BYTES ; i++)
+    {
+        *(data+i) = i2c_read(0);
+    }
+    
     i2c_stop();
-    
-    return error;
-}
-
-// Reads an error code from the eeprom
-int eeprom_read_id(void)
-{
-    int id;
-    
-    // Write the data address to the eeprom
-    i2c_start();
-    i2c_write(DEVICE_ADDRESS|I2C_WRITE_BIT);
-    i2c_write(CELL_ID_ADDRESS);
-    
-    // Read a byte from the data address
-    i2c_start();
-    i2c_write(DEVICE_ADDRESS|I2C_READ_BIT);
-    id = i2c_read(0);
-    i2c_stop();
-    
-    return id;
 }
 
 void eeprom_clear(void)
 {
     output_low(WP_PIN);
-    eeprom_write_error(SUCCESS, 0xFF);
+    g_ov_error = 0xFF;
+    g_uv_error = 0xFF;
+    g_ot_error = 0xFF;
+    g_current_error = CURRENT_SUCCESS;
+    eeprom_write_errors();
 }
+
+void eeprom_set_ov_error(int id)
+{
+    g_ov_error = id;
+}
+
+void eeprom_set_uv_error(int id)
+{
+    g_uv_error = id;
+}
+
+void eeprom_set_ot_error(int id)
+{
+    g_ot_error = id;
+}
+
+void eeprom_set_current_error(current_error_t error)
+{
+    g_current_error = (int8)(error);
+}
+
+#endif
