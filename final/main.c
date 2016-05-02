@@ -56,9 +56,8 @@
 #define SAFETY_CHECK (check_voltage() & check_temperature() & check_current())
 
 static cell_t         g_cell[N_CELLS];
+static temperature_t  g_temperature[N_ADC_CHANNELS];
 static current_t      g_current;
-static unsigned int16 g_adc_data[N_ADC_CHANNELS];
-static float          g_temps[N_ADC_CHANNELS];
 static int            g_highest_voltage_cell_index;
 static int            g_lowest_voltage_cell_index;
 static int            g_highest_temperature_cell_index;
@@ -123,7 +122,7 @@ int get_highest_temperature_cell_index(void)
     int highest = 0;
     for (i = 0 ; i < N_ADC_CHANNELS ; i++)
     {
-        if (g_temps[i] >= g_temps[highest])
+        if (g_temperature[i].average >= g_temperature[highest].average)
         {
             highest = i;
         }
@@ -139,15 +138,15 @@ void convert_adc_data_to_temps(void)
     float temperature;
     for (i = 0; i < N_ADC_CHANNELS; i++)
     {
-        resistance = THERMISTOR_SERIES * (float)g_adc_data[i] /
-           (LSBS_PER_VOLT * THERMISTOR_SUPPLY - (float)g_adc_data[i]);
+        resistance = THERMISTOR_SERIES * (float)g_temperature[i].average /
+           (LSBS_PER_VOLT * THERMISTOR_SUPPLY - (float)g_temperature[i].average);
         temperature = resistance / THERMISTOR_NOMINAL;
         temperature = log(temperature);
         temperature /= B_COEFF;
         temperature += 1.0 / (TEMPERATURE_NOMINAL + 273.15);
         temperature = 1.0 / temperature;
         temperature -= 273.15;
-        g_temps[i] = temperature;
+        g_temperature[i].converted = temperature;
     }
 }
 
@@ -227,6 +226,25 @@ void average_voltage(void)
     }
 }
 
+void average_temperature(void)
+{
+    int i;
+    int j;
+    unsigned int32 sum;
+    for (i = 0 ; i < N_ADC_CHANNELS ; i++)
+    {
+        sum = 0;
+        for (j = 0 ; j < N_TEMPERATURE_SAMPLES-1 ; j++)
+        {
+            sum += g_temperature[i].samples[j];
+            g_temperature[i].samples[j] = g_temperature[i].samples[j+1];
+        }
+        sum += g_temperature[i].raw;
+        g_temperature[i].samples[N_TEMPERATURE_SAMPLES-1] = g_temperature[i].raw;
+        g_temperature[i].average = (unsigned int16) (sum/N_TEMPERATURE_SAMPLES);
+    }
+}
+
 void average_current(void)
 {
     int i;
@@ -258,7 +276,7 @@ void send_temperature_data(void)
     putc(TEMP_ID);
     for (i = 0 ; i < N_ADC_CHANNELS ; i++)
     {
-        putc((unsigned int8)(g_temps[i]));
+        putc((unsigned int8)(g_temperature[i].converted));
     }
 }
 
@@ -321,10 +339,11 @@ int1 check_voltage(void)
 int1 check_temperature(void)
 {
     // Find highest temperature reading
-    ads7952_read_all_channels(g_adc_data);
+    ads7952_read_all_channels(g_temperature);
+    average_temperature();
     convert_adc_data_to_temps();
     g_highest_temperature_cell_index = get_highest_temperature_cell_index();
-    g_highest_temperature = g_temps[g_highest_temperature_cell_index];
+    g_highest_temperature = g_temperature[g_highest_temperature_cell_index].converted;
     
     if (g_highest_temperature >= TEMP_CRITICAL)
     {
@@ -336,7 +355,7 @@ int1 check_temperature(void)
     }
     else if (g_highest_temperature >= TEMP_WARNING)
     {
-        // tempeature charge protection
+        // temperature charge protection
         // disable charging
         //if (motor controller and mppt are connected)
         if (true)
@@ -470,8 +489,6 @@ void main()
     setup_timer2(TMR_INTERNAL|TMR_DIV_BY_256,39*HEARTBEAT_PERIOD_MS);
     enable_interrupts(INT_TIMER2);
     
-    delay_ms(1000);
-    
     main_init();
     ltc6804_init();
     ads7952_init();
@@ -479,11 +496,17 @@ void main()
     fan_init();
     fan_set_speed(FAN_LOW);
     
-    // Populate voltage running average
+    // Populate running averages
     for (i = 0 ; i < N_VOLTAGE_SAMPLES ; i++)
     {
         ltc6804_read_cell_voltages(g_cell);
         average_voltage();
+    }
+    
+    for (i = 0 ; i < N_TEMPERATURE_SAMPLES ; i++)
+    {
+        ads7952_read_all_channels(g_temperature);
+        average_temperature();
     }
     
     for (i = 0 ; i < N_CURRENT_SAMPLES ; i++)

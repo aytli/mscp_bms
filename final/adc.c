@@ -9,6 +9,16 @@
 #define THERMISTOR_SERIES   10000.0
 #define B_COEFF             4300.0
 
+#define N_TEMPERATURE_SAMPLES 10
+
+typedef struct
+{
+    unsigned int16 raw;
+    unsigned int16 samples[N_TEMPERATURE_SAMPLES];
+    unsigned int16 average;
+    float          converted;
+} temperature_t;
+
 // Configures the ADS7952 to operate in Auto-1 Mode
 void ads7952_init(void)
 {
@@ -44,7 +54,7 @@ void ads7952_init(void)
 
 // Reads all the channel voltages
 // Expects an array of size 12 as an input
-void ads7952_read_all_channels(unsigned int16 * buf)
+void ads7952_read_all_channels(temperature_t * adc)
 {
     int i;
     int ch;
@@ -69,7 +79,7 @@ void ads7952_read_all_channels(unsigned int16 * buf)
         output_high(ADC1_SEL);
         
         ch = msb >> 4;
-        buf[ch] = ((0x0F & msb) << 8 ) | lsb;
+        adc[ch].raw = ((0x0F & msb) << 8 ) | lsb;
     }
     
     for (i = 12 ; i < 24 ; i ++)
@@ -89,8 +99,8 @@ void ads7952_read_all_channels(unsigned int16 * buf)
         }
         output_high(ADC2_SEL);
         
-        ch = msb >> 4;
-        buf[ch + 12] = ((0x0F & msb) << 8 ) | lsb;
+        ch = (msb >> 4) + 12;
+        adc[ch].raw = ((0x0F & msb) << 8 ) | lsb;
     }
 }
 
