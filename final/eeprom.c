@@ -42,32 +42,26 @@ void eeprom_write_errors(void)
     i2c_start();
     i2c_write(DEVICE_ADDRESS|I2C_WRITE_BIT);
     i2c_write(BASE_ADDRESS);
-    i2c_write(g_ov_error);              // Byte 0  - OV error
-    i2c_write(g_uv_error);              // Byte 1  - UV error
-    i2c_write(g_ot_error);              // Byte 2  - OT error
+    i2c_write(g_ov_error);              // Byte 0 - OV error
+    i2c_write(g_uv_error);              // Byte 1 - UV error
+    i2c_write(g_ot_error);              // Byte 2 - OT error
     i2c_write((int8)(g_current_error)); // Byte 3 - Current error
     i2c_stop();
+    delay_ms(WRITE_TIME_MS);
 }
 
 // Reads the contents of the eeprom
 void eeprom_read(int8 * data)
 {
-    int i;
-    
-    // Write the data address to the eeprom
     i2c_start();
     i2c_write(DEVICE_ADDRESS|I2C_WRITE_BIT);
     i2c_write(BASE_ADDRESS);
-    
-    // Read the contents of the eeprom memory
     i2c_start();
     i2c_write(DEVICE_ADDRESS|I2C_READ_BIT);
-    
-    for (i = 0 ; i < N_ERROR_BYTES ; i++)
-    {
-        *(data+i) = i2c_read(0);
-    }
-    
+    *(data+0) = i2c_read(1); // OV error, ACK
+    *(data+1) = i2c_read(1); // UV error, ACK
+    *(data+2) = i2c_read(1); // OT error, ACK
+    *(data+3) = i2c_read(0); // current,  NOACK, stop
     i2c_stop();
 }
 
@@ -81,17 +75,17 @@ void eeprom_clear(void)
     eeprom_write_errors();
 }
 
-void eeprom_set_ov_error(int id)
+void eeprom_set_ov_error(int8 id)
 {
     g_ov_error = id;
 }
 
-void eeprom_set_uv_error(int id)
+void eeprom_set_uv_error(int8 id)
 {
     g_uv_error = id;
 }
 
-void eeprom_set_ot_error(int id)
+void eeprom_set_ot_error(int8 id)
 {
     g_ot_error = id;
 }
