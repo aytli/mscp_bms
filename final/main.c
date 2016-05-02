@@ -37,8 +37,7 @@
 #define KILOVAC_OFF        \
     gb_connected = 0;      \
     output_low(RX_LED);    \
-    output_low(KVAC_PIN);  \
-    eeprom_write_errors();
+    output_low(KVAC_PIN);
 
 // Protection limits
 #define VOLTAGE_MAX            42000 // 4.20V
@@ -82,7 +81,6 @@ void main_init(void)
     g_highest_voltage = 0;
     g_lowest_voltage = 0;
     g_highest_temperature = 0;
-    gb_lcd_connected = false;
     gb_connected = 0;
 }
 
@@ -382,7 +380,6 @@ int1 check_current(void)
     // Read the pack current
     g_current.raw = hall_sensor_read_data();
     average_current();
-    //g_current.average = CURRENT_ZERO;
     
     // Hall effect sensor is uncalibrated
     // This function will always return true until calibration is done
@@ -405,7 +402,7 @@ int1 check_current(void)
     else
     {
         // current is fine
-        eeprom_set_current_error(CURRENT_SUCCESS);
+        eeprom_set_current_error(EEPROM_SUCCESS);
         return 1;
     }*/
 }
@@ -525,6 +522,7 @@ void main()
     else
     {
         // Something went wrong, do not connect the pack
+        eeprom_write_errors();
         KILOVAC_OFF;
     }
     
@@ -542,6 +540,7 @@ void main()
         {
             // Something went wrong
             ltc6804_init(); // Disable balancing
+            eeprom_write_errors();
             KILOVAC_OFF;    // Turn off pack
         }
     }

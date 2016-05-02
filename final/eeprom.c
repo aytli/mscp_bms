@@ -23,22 +23,24 @@
 // The EEPROM takes 5ms to write data to memory
 #define WRITE_TIME_MS 5
 
+#define EEPROM_SUCCESS 0xFF
+
 typedef enum
 {
     OC_ERROR        = 1,
     UC_ERROR        = 2,
-    CURRENT_SUCCESS = 0xFF
 } current_error_t;
 
-static int8 g_ov_error;
-static int8 g_uv_error;
-static int8 g_ot_error;
-static int8 g_current_error;
+static int8 g_ov_error = EEPROM_SUCCESS;
+static int8 g_uv_error = EEPROM_SUCCESS;
+static int8 g_ot_error = EEPROM_SUCCESS;
+static int8 g_current_error = EEPROM_SUCCESS;
 
 // Writes an error code to the eeprom
 void eeprom_write_errors(void)
 {
     // Write the error code
+    output_low(WP_PIN);
     i2c_start();
     i2c_write(DEVICE_ADDRESS|I2C_WRITE_BIT);
     i2c_write(BASE_ADDRESS);
@@ -47,12 +49,14 @@ void eeprom_write_errors(void)
     i2c_write(g_ot_error);              // Byte 2 - OT error
     i2c_write((int8)(g_current_error)); // Byte 3 - Current error
     i2c_stop();
+    output_high(WP_PIN);
     delay_ms(WRITE_TIME_MS);
 }
 
 // Reads the contents of the eeprom
 void eeprom_read(int8 * data)
 {
+    output_low(WP_PIN);
     i2c_start();
     i2c_write(DEVICE_ADDRESS|I2C_WRITE_BIT);
     i2c_write(BASE_ADDRESS);
@@ -61,17 +65,17 @@ void eeprom_read(int8 * data)
     *(data+0) = i2c_read(1); // OV error, ACK
     *(data+1) = i2c_read(1); // UV error, ACK
     *(data+2) = i2c_read(1); // OT error, ACK
-    *(data+3) = i2c_read(0); // current,  NOACK, stop
+    *(data+3) = i2c_read(0); // current error, NOACK, stop
     i2c_stop();
+    output_high(WP_PIN);
 }
 
 void eeprom_clear(void)
 {
-    output_low(WP_PIN);
-    g_ov_error = 0xFF;
-    g_uv_error = 0xFF;
-    g_ot_error = 0xFF;
-    g_current_error = CURRENT_SUCCESS;
+    g_ov_error = EEPROM_SUCCESS;
+    g_uv_error = EEPROM_SUCCESS;
+    g_ot_error = EEPROM_SUCCESS;
+    g_current_error = EEPROM_SUCCESS;
     eeprom_write_errors();
 }
 
