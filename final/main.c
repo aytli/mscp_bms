@@ -30,12 +30,12 @@
 
 // Kilovac control
 #define KILOVAC_ON         \
-    g_status = 1;          \
+    gb_connected = 1;      \
     output_high(RX_LED);   \
     output_high(KVAC_PIN);
 
 #define KILOVAC_OFF        \
-    g_status = 0;          \
+    gb_connected = 0;      \
     output_low(RX_LED);    \
     output_low(KVAC_PIN);  \
     eeprom_write_errors();
@@ -66,7 +66,7 @@ static unsigned int16 g_highest_voltage;
 static unsigned int16 g_lowest_voltage;
 static float          g_highest_temperature;
 static int1           gb_lcd_connected;
-static int1           g_status;
+static int1           gb_connected;
 
 // Initializes the cells, clears all flags, resets highest and lowest cells
 void main_init(void)
@@ -84,7 +84,7 @@ void main_init(void)
     g_lowest_voltage = 0;
     g_highest_temperature = 0;
     gb_lcd_connected = false;
-    g_status = 0;
+    gb_connected = 0;
 }
 
 // Returns the index for the highest voltage cell
@@ -281,10 +281,10 @@ void send_balancing_bits(void)
     putc((int8)((discharge>>24)&0x3F));
 }
 
-void send_status(void)
+void send_pack_status(void)
 {
     putc(STATUS_ID);
-    putc(g_status);
+    putc(gb_connected);
 }
 
 int1 check_voltage(void)
@@ -437,7 +437,7 @@ void isr_timer2(void)
     delay_ms(1);
     send_balancing_bits();
     delay_ms(1);
-    send_status();
+    send_pack_status();
     output_toggle(STATUS);
     
     if ((input_state(LCD_SIG) == 1) && (gb_lcd_connected == false))
