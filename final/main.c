@@ -451,7 +451,7 @@ void isr_timer2(void)
             display_errors();
         }
     }
-    else
+    else if (input_state(LCD_SIG) == 0)
     {
         // LCD not connected, clear flag
         gb_lcd_connected = false;
