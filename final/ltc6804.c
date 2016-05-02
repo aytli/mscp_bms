@@ -36,7 +36,7 @@
 #define N_CELLS 30     // The 3 LTC devices will monitor 30 cells
 
 // Number of samples for moving average
-#define N_SAMPLES 10
+#define N_VOLTAGE_SAMPLES 10
 
 // Voltage threshold for balancing to occur (BALANCE_THRESHOLD / 100) V
 #define BALANCE_THRESHOLD 140
@@ -69,7 +69,7 @@ typedef struct
 {
     unsigned int16 voltage; // LTC6804 has a 16 bit voltage ADC
     unsigned int16 average_voltage;
-    unsigned int16 samples[N_SAMPLES];
+    unsigned int16 samples[N_VOLTAGE_SAMPLES];
 } cell_t;
 
 // Function prototypes

@@ -56,6 +56,7 @@
 #define SAFETY_CHECK (check_voltage() & check_temperature() & check_current())
 
 static cell_t         g_cell[N_CELLS];
+static current_t      g_current;
 static unsigned int16 g_adc_data[N_ADC_CHANNELS];
 static float          g_temps[N_ADC_CHANNELS];
 static int            g_highest_voltage_cell_index;
@@ -64,7 +65,6 @@ static int            g_highest_temperature_cell_index;
 static unsigned int16 g_highest_voltage;
 static unsigned int16 g_lowest_voltage;
 static float          g_highest_temperature;
-static unsigned int16 g_current;
 static int1           gb_lcd_connected;
 static int1           g_status;
 
@@ -76,13 +76,13 @@ void main_init(void)
     {
         g_cell[i].voltage = 0;
     }
+    g_current.average = 0;
     g_highest_voltage_cell_index = 0;
     g_lowest_voltage_cell_index = 0;
     g_highest_temperature_cell_index = 0;
     g_highest_voltage = 0;
     g_lowest_voltage = 0;
     g_highest_temperature = 0;
-    g_current = 0;
     gb_lcd_connected = false;
     g_status = 0;
 }
@@ -216,15 +216,29 @@ void average_voltage(void)
     for (i = 0 ; i < N_CELLS ; i++)
     {
         sum = 0;
-        for (j = 0 ; j < N_SAMPLES-1 ; j++)
+        for (j = 0 ; j < N_VOLTAGE_SAMPLES-1 ; j++)
         {
             sum += g_cell[i].samples[j];
             g_cell[i].samples[j] = g_cell[i].samples[j+1];
         }
         sum += g_cell[i].voltage;
-        g_cell[i].samples[N_SAMPLES-1] = g_cell[i].voltage;
-        g_cell[i].average_voltage = (unsigned int16) (sum/N_SAMPLES);
+        g_cell[i].samples[N_VOLTAGE_SAMPLES-1] = g_cell[i].voltage;
+        g_cell[i].average_voltage = (unsigned int16) (sum/N_VOLTAGE_SAMPLES);
     }
+}
+
+void average_current(void)
+{
+    int i;
+    unsigned int32 sum = 0;
+    for (i = 0 ; i < N_CURRENT_SAMPLES-1 ; i++)
+    {
+        sum += g_current.samples[i];
+        g_current.samples[i] = g_current.samples[i+1];
+    }
+    sum += g_current.raw;
+    g_current.samples[N_CURRENT_SAMPLES-1] = g_current.raw;
+    g_current.average = (unsigned int16) (sum/N_CURRENT_SAMPLES);
 }
 
 void send_voltage_data(void)
@@ -251,8 +265,8 @@ void send_temperature_data(void)
 void send_current_data(void)
 {
     putc(CURRENT_ID);
-    putc((int8)(g_current&0xFF));
-    putc((int8)((g_current>>8)&0xFF));
+    putc((int8)(g_current.average&0xFF));
+    putc((int8)((g_current.average>>8)&0xFF));
 }
 
 void send_balancing_bits(void)
@@ -316,6 +330,7 @@ int1 check_temperature(void)
     {
         // temperature discharge protection
         // shut off pack, write OT error and cell id to eeprom
+        fan_set_speed(FAN_MAX);
         eeprom_set_ot_error((int8)(g_highest_temperature_cell_index));
         return 0;
     }
@@ -327,6 +342,7 @@ int1 check_temperature(void)
         if (true)
         {
             //turn off array, tell motor controller to disable regen
+            fan_set_speed(FAN_HIGH);
             eeprom_set_ot_error((int8)(g_highest_temperature_cell_index));
             return 0;
         }
@@ -345,7 +361,9 @@ int1 check_temperature(void)
 int1 check_current(void)
 {
     // Read the pack current
-    g_current = hall_sensor_read_data();
+    g_current.raw = hall_sensor_read_data();
+    average_current();
+    //g_current.average = CURRENT_ZERO;
     
     // Hall effect sensor is uncalibrated
     // This function will always return true until calibration is done
@@ -376,9 +394,6 @@ int1 check_current(void)
 // Reads error data from the eeprom and displays it on the lcd
 void display_errors(void)
 {
-    int byt;
-    int bit;
-    int id;
     char str[3];
     unsigned int8 errors[N_ERROR_BYTES];
     eeprom_read(errors);
@@ -423,17 +438,23 @@ void isr_timer2(void)
     send_balancing_bits();
     delay_ms(1);
     send_status();
-    output_toggle(STATUS);    
+    output_toggle(STATUS);
     
-    if (input_state(LCD_SIG) == 1)
+    if ((input_state(LCD_SIG) == 1) && (gb_lcd_connected == false))
     {
-        delay_ms(100);
-        if ((input_state(LCD_SIG) == 1) && (gb_lcd_connected == false))
+        // LCD connected, debounce the pin
+        delay_ms(1000);
+        if (input_state(LCD_SIG) == 1)
         {
+            // LCD still connected, set flag to true, read and display errors
             gb_lcd_connected = true;
-            delay_ms(200);
             display_errors();
         }
+    }
+    else
+    {
+        // LCD not connected, clear flag
+        gb_lcd_connected = false;
     }
 }
 
@@ -449,17 +470,26 @@ void main()
     setup_timer2(TMR_INTERNAL|TMR_DIV_BY_256,39*HEARTBEAT_PERIOD_MS);
     enable_interrupts(INT_TIMER2);
     
+    delay_ms(1000);
+    
     main_init();
     ltc6804_init();
     ads7952_init();
     hall_sensor_init();
     fan_init();
+    fan_set_speed(FAN_LOW);
     
-    // Populate running average
-    for (i = 0 ; i < N_SAMPLES ; i++)
+    // Populate voltage running average
+    for (i = 0 ; i < N_VOLTAGE_SAMPLES ; i++)
     {
         ltc6804_read_cell_voltages(g_cell);
         average_voltage();
+    }
+    
+    for (i = 0 ; i < N_CURRENT_SAMPLES ; i++)
+    {
+        g_current.raw = hall_sensor_read_data();
+        average_current();
     }
     
     // Perform startup test
@@ -483,7 +513,6 @@ void main()
         {
             // Operating levels are safe, balance the cells
             balance();
-            KILOVAC_ON; // REMOVE THIS LINE, FOR TESTING ONLY
             delay_ms(100);
         }
         else

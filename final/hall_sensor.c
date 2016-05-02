@@ -4,7 +4,7 @@
 // Practice pack calibration
 //#define CURRENT_CHARGE_MAX    2546  //~+40 A
 //#define CURRENT_DISCHARGE_MAX 1031  //~-80 A
-#define CURRENT_ZERO          2560
+#define CURRENT_ZERO           3007
 #define CURRENT_SLOPE         12.64
 
 #define HALL_ADC_CHANNEL         24
@@ -12,12 +12,20 @@
 #define HALL_ANALOG_PIN       sAN24
 #define HALL_TEMPERATURE_PIN  sAN25
 
+#define N_CURRENT_SAMPLES 10
+
+typedef struct
+{
+    unsigned int16 raw;
+    unsigned int16 samples[N_CURRENT_SAMPLES];
+    unsigned int16 average;
+} current_t;
+
 // Initializes the hall effect sensor interface
 void hall_sensor_init(void)
 {
     setup_adc(ADC_CLOCK_INTERNAL);
-    setup_adc_ports(HALL_ANALOG_PIN);
-    setup_adc_ports(HALL_TEMPERATURE_PIN);
+    setup_adc_ports(HALL_ANALOG_PIN|HALL_TEMPERATURE_PIN);
 }
 
 // Returns the calibrated current value from the raw adc reading

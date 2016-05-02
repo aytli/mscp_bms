@@ -37,8 +37,9 @@ void isr_timer3(void)
 void fan_init(void)
 {
     // Set up and enable timer 3 to interrupt every 1ms using 20MHz clock
-    setup_timer3(TMR_INTERNAL|TMR_DIV_BY_256,39);
-    enable_interrupts(INT_TIMER3);
+    //setup_timer3(TMR_INTERNAL|TMR_DIV_BY_256,39);
+    //enable_interrupts(INT_TIMER3);
+    output_high(FAN_PIN);
     g_speed = FAN_OFF;
 }
 
