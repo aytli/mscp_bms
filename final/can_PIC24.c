@@ -125,7 +125,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <stdint.h>
-#include <can-PIC24.h>
+#include <can_PIC24.h>
 
 #if CAN_DO_DEBUG
  #define can_debug printf
@@ -1079,10 +1079,14 @@ int1 can_putd(uint32_t id, uint8_t *data, uint8_t len, uint8_t priority, int1 ex
          *ptr=make16(data[i+1],data[i]);
       ptr++;
    }
+   printf("\r\n%LX",ecan1_message_buffer[port][3]);
+   printf("\r\n%LX",ecan1_message_buffer[port][4]);
+   printf("\r\n%LX",ecan1_message_buffer[port][5]);
+   printf("\r\n%LX",ecan1_message_buffer[port][6]);
    
    switch(port)
    {
-      case  0:
+      case 0:
          C1TR01CON.txmpri=priority;          //set priority DMA buffer 0
          C1TR01CON.txreqm=1;                 //enable transmission buffer 0
          break;

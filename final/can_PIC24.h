@@ -32,7 +32,7 @@
 #endif
 
 #IFNDEF CAN_USE_EXTENDED_ID
-  #define CAN_USE_EXTENDED_ID         TRUE
+  #define CAN_USE_EXTENDED_ID         FALSE
 #ENDIF
 
 #IFNDEF CAN_BRG_SYNCH_JUMP_WIDTH
@@ -60,7 +60,7 @@
 #endif
 
 #ifndef CAN_BRG_SAM
- #define CAN_BRG_SAM 0 //sample of the can bus line (def: bus line is sampled 1 times prior to sample point)
+ #define CAN_BRG_SAM 1 //sample of the can bus line (def: bus line is sampled 1 times prior to sample point)
 #endif
 
 #ifndef CAN2_BRG_SAM
@@ -76,7 +76,7 @@
 #endif
 
 #ifndef CAN_BRG_PROPAGATION_TIME
- #define CAN_BRG_PROPAGATION_TIME 2 //propagation time select (def: 3 x Tq)
+ #define CAN_BRG_PROPAGATION_TIME 6 //propagation time select (def: 3 x Tq)
 #endif
 
 #ifndef CAN2_BRG_PROPAGATION_TIME
@@ -92,7 +92,7 @@
 #endif
 
 #ifndef CAN_BRG_PHASE_SEGMENT_2
- #define CAN_BRG_PHASE_SEGMENT_2 5 //phase segment 2 time select (def: 6 x Tq)
+ #define CAN_BRG_PHASE_SEGMENT_2 1 //phase segment 2 time select (def: 6 x Tq)
 #endif
 
 #ifndef CAN2_BRG_PHASE_SEGMENT_2

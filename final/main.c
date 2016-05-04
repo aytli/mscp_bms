@@ -14,6 +14,7 @@
 #include "lcd.c"
 #include "hall_sensor.c"
 #include "eeprom.c"
+#include "can_PIC24.c"
 
 // PIC internal register addresses
 #word IFS0 = 0x0084
@@ -484,7 +485,7 @@ void main()
     
     // Set up and enable timer 2 with a period of HEARTBEAT_PERIOD_MS
     setup_timer2(TMR_INTERNAL|TMR_DIV_BY_256,39*HEARTBEAT_PERIOD_MS);
-    enable_interrupts(INT_TIMER2);
+    //enable_interrupts(INT_TIMER2);
     
     main_init();
     ltc6804_init();
@@ -526,11 +527,52 @@ void main()
         KILOVAC_OFF;
     }
     
+    int8 out_data[8] = {0,1,2,3,4,5,6,7};
+    int32 tx_id = 0x400;
+    int1 tx_rtr = 0;
+    int1 tx_ext = 0;
+    int tx_len = 8;
+    int tx_pri = 3;
+    
+    can_init();
+    can_enable_b_transfer(0);
+    can_enable_b_transfer(1);
+    can_enable_b_transfer(2);
+    can_enable_b_transfer(3);
+    can_enable_b_transfer(4);
+    can_enable_b_transfer(5);
+    can_enable_b_transfer(6);
+    can_enable_b_transfer(7);
+    can_enable_interrupts(TB);
+    
     while (true)
     {
         output_toggle(TX_LED);
+        delay_ms(50);
         
-        if (SAFETY_CHECK)
+        if (can_tbe())
+        {
+            i = can_putd(tx_id,out_data,tx_len,tx_pri,tx_ext,tx_rtr); //put data on transmit buffer
+            if (i == 1)
+            {
+                output_toggle(STATUS);
+                printf("\r\n\nSENT %U: ID=%3LX LEN=%U ", i, tx_id, tx_len);
+                printf("PRI=%U EXT=%U RTR=%U\r\n   DATA = ", tx_pri, tx_ext, tx_rtr);
+                for (i=0;i<tx_len;i++) 
+                {
+                   printf("%X ",out_data[i]);
+                }
+            }
+            else 
+            { //fail, no transmit buffer was open
+                printf("\r\nFAIL on can_putd\r\n");
+            }
+            
+            out_data[0]++;
+        }
+        
+        
+        /*if (SAFETY_CHECK)
         {
             // Operating levels are safe, balance the cells
             balance();
@@ -542,7 +584,7 @@ void main()
             ltc6804_init(); // Disable balancing
             eeprom_write_errors();
             KILOVAC_OFF;    // Turn off pack
-        }
+        }*/
     }
 }
 
