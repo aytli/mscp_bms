@@ -114,7 +114,7 @@
 //// in object code form are not restricted in any way.              ////
 /////////////////////////////////////////////////////////////////////////
 
-#include <can-18F4580_mscp.h>
+#include <can18F4580_mscp.h>
 
 #if CAN_DO_DEBUG
  #use rs232(baud=9600, xmit=PIN_C6, rcv=PIN_C7)
@@ -734,6 +734,7 @@ int8 can_putd(int32 id, int8 *data, int8 len, int8 priority, int1 ext, int1 rtr)
 
     for (i=0; i<len; i++) {
       *txd0=*data;
+      printf("ASDF: %LX\r\n", *(&TXRXBaD0+i));
       txd0++;
       data++;
     }
@@ -744,7 +745,7 @@ int8 can_putd(int32 id, int8 *data, int8 len, int8 priority, int1 ext, int1 rtr)
    if(curfunmode==CAN_FUN_OP_LEGACY)
       CANCON.win=CAN_WIN_RX0;
    else
-      ECANCON.ewin=RX0;
+      ECANCON.ewin=TXRX0;
 
    #if CAN_DO_DEBUG
             can_debug("\r\nCAN_PUTD(): BUFF=%U ID=%LX LEN=%U PRI=%U EXT=%U RTR=%U\r\n", port, id, len, priority, ext, rtr);
@@ -758,7 +759,7 @@ int8 can_putd(int32 id, int8 *data, int8 len, int8 priority, int1 ext, int1 rtr)
                can_debug("\r\n");
             }
    #endif
-
+   
    return(port);
 }
 
