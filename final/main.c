@@ -553,7 +553,9 @@ void main()
         output_toggle(TX_LED);
         delay_ms(100);
         
-        if (can_tbe())
+        
+        
+        /*if (can_tbe())
         {
             i = can_putd(tx_id,out_data,tx_len,tx_pri,tx_ext,tx_rtr); //put data on transmit buffer
             if (i == 1)
@@ -565,14 +567,6 @@ void main()
                 {
                    printf("%X ",out_data[i]);
                 }
-                printf("\r\n%d%d%d",C1TR01CON.TXABTm,C1TR01CON.TXLARBm,C1TR01CON.TXREQm);
-                printf("\r\n%d%d%d",C1TR01CON.TXABTn,C1TR01CON.TXLARBn,C1TR01CON.TXREQn);
-                printf("\r\n%d%d%d",C1TR23CON.TXABTm,C1TR23CON.TXLARBm,C1TR23CON.TXREQm);
-                printf("\r\n%d%d%d",C1TR23CON.TXABTn,C1TR23CON.TXLARBn,C1TR23CON.TXREQn);
-                printf("\r\n%d%d%d",C1TR45CON.TXABTm,C1TR45CON.TXLARBm,C1TR45CON.TXREQm);
-                printf("\r\n%d%d%d",C1TR45CON.TXABTn,C1TR45CON.TXLARBn,C1TR45CON.TXREQn);
-                printf("\r\n%d%d%d",C1TR67CON.TXABTm,C1TR67CON.TXLARBm,C1TR67CON.TXREQm);
-                printf("\r\n%d%d%d",C1TR67CON.TXABTn,C1TR67CON.TXLARBn,C1TR67CON.TXREQn);
             }
             else 
             { //fail, no transmit buffer was open
@@ -581,7 +575,7 @@ void main()
             //can_abort();
             out_data[0]++;
         }
-        
+        */
         
         /*if (SAFETY_CHECK)
         {
