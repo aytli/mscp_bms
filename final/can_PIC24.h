@@ -68,7 +68,7 @@
 #endif
 
 #ifndef CAN_BRG_PHASE_SEGMENT_1
- #define CAN_BRG_PHASE_SEGMENT_1  5 //phase segment 1 (def: 6 x Tq)
+ #define CAN_BRG_PHASE_SEGMENT_1  1 //phase segment 1 (def: 6 x Tq)
 #endif
 
 #ifndef CAN2_BRG_PHASE_SEGMENT_1
@@ -76,7 +76,7 @@
 #endif
 
 #ifndef CAN_BRG_PROPAGATION_TIME
- #define CAN_BRG_PROPAGATION_TIME 6 //propagation time select (def: 3 x Tq)
+ #define CAN_BRG_PROPAGATION_TIME 2 //propagation time select (def: 3 x Tq)
 #endif
 
 #ifndef CAN2_BRG_PROPAGATION_TIME
