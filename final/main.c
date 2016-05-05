@@ -481,6 +481,20 @@ void main()
 {
     int i;
     
+    // CAN transmit
+    int8 out_data[8] = {0,1,2,3,4,5,6,7};
+    int32 tx_id = 0x400;
+    int1 tx_rtr = 0;
+    int1 tx_ext = 0;
+    int tx_len = 8;
+    int tx_pri = 3;
+    
+    // CAN receive
+    struct rx_stat rxstat;
+    int32 rx_id;
+    int in_data[8];
+    int8 rx_len;
+    
     // Kilovac is initially disabled
     KILOVAC_OFF;
     
@@ -494,6 +508,18 @@ void main()
     hall_sensor_init();
     fan_init();
     fan_set_speed(FAN_LOW);
+    
+    // Initialize CANbus, configure outputs, enable transfer buffers
+    can_init();
+    set_tris_f((*0x02DE&0xFFFD)|0x01); // set F0 to CANRX, F1 to CANTX
+    can_enable_b_transfer(0);
+    can_enable_b_transfer(1);
+    can_enable_b_transfer(2);
+    can_enable_b_transfer(3);
+    can_enable_b_transfer(4);
+    can_enable_b_transfer(5);
+    can_enable_b_transfer(6);
+    can_enable_b_transfer(7);
     
     // Populate running averages
     for (i = 0 ; i < N_VOLTAGE_SAMPLES ; i++)
@@ -528,32 +554,39 @@ void main()
         KILOVAC_OFF;
     }
     
-    int8 out_data[8] = {0,1,2,3,4,5,6,7};
-    int32 tx_id = 0x400;
-    int1 tx_rtr = 0;
-    int1 tx_ext = 0;
-    int tx_len = 8;
-    int tx_pri = 3;
-    
-    can_init();
-    set_tris_f((*0x02DE&0xFFFD)|0x01); // set F0 to CANRX, F1 to CANTX
-    
-    can_enable_b_transfer(0);
-    can_enable_b_transfer(1);
-    can_enable_b_transfer(2);
-    can_enable_b_transfer(3);
-    can_enable_b_transfer(4);
-    can_enable_b_transfer(5);
-    can_enable_b_transfer(6);
-    can_enable_b_transfer(7);
-    can_enable_interrupts(TB);
-    
     while (true)
     {
-        output_toggle(TX_LED);
-        delay_ms(100);
-        
-        
+        // This is the polling receive routine (works)
+        /*if (can_kbhit())   //if data is waiting in buffer...
+        {
+            if (can_getd(rx_id, in_data, rx_len, rxstat)) 
+            {
+                output_toggle(TX_LED);
+                printf("\r\nRECIEVED: BUFF=%U ID=%3LX LEN=%U OVF=%U ",
+                       rxstat.buffer,
+                       rx_id,
+                       rx_len,
+                       rxstat.err_ovfl);
+                   
+                printf("FILT=%U RTR=%U EXT=%U INV=%U",
+                       rxstat.filthit,
+                       rxstat.rtr,
+                       rxstat.ext,
+                       rxstat.inv);
+                   
+                printf("\r\n    DATA = ");
+            
+                for (i = 0 ; i < rx_len ; i++)
+                {
+                    printf("%X ",in_data[i]);
+                }
+                printf("\r\n");
+            }
+            else
+            {
+                printf("\r\nFAIL on can_getd\r\n");
+            }
+        }*/
         
         /*if (can_tbe())
         {
@@ -572,10 +605,9 @@ void main()
             { //fail, no transmit buffer was open
                 printf("\r\nFAIL on can_putd\r\n");
             }
-            //can_abort();
             out_data[0]++;
-        }
-        */
+        }*/
+        
         
         /*if (SAFETY_CHECK)
         {
