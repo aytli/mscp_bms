@@ -1079,6 +1079,7 @@ int1 can_putd(uint32_t id, uint8_t *data, uint8_t len, uint8_t priority, int1 ex
          *ptr=make16(data[i+1],data[i]);
       ptr++;
    }
+   printf("\r\nPORT: %d",port);
    printf("\r\n%LX",ecan1_message_buffer[port][3]);
    printf("\r\n%LX",ecan1_message_buffer[port][4]);
    printf("\r\n%LX",ecan1_message_buffer[port][5]);

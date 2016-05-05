@@ -18,6 +18,7 @@
 
 // PIC internal register addresses
 #word IFS0 = 0x0084
+#word TRISF = 0x02DE
 
 // Macros to disable timers and clear flags
 #define CLEAR_T2_FLAG IFS0  &= 0xFF7F
@@ -535,6 +536,8 @@ void main()
     int tx_pri = 3;
     
     can_init();
+    set_tris_f((*0x02DE&0xFFFD)|0x01); // set F0 to CANRX, F1 to CANTX
+    
     can_enable_b_transfer(0);
     can_enable_b_transfer(1);
     can_enable_b_transfer(2);
@@ -548,7 +551,7 @@ void main()
     while (true)
     {
         output_toggle(TX_LED);
-        delay_ms(50);
+        delay_ms(100);
         
         if (can_tbe())
         {
@@ -562,12 +565,20 @@ void main()
                 {
                    printf("%X ",out_data[i]);
                 }
+                printf("\r\n%d%d%d",C1TR01CON.TXABTm,C1TR01CON.TXLARBm,C1TR01CON.TXREQm);
+                printf("\r\n%d%d%d",C1TR01CON.TXABTn,C1TR01CON.TXLARBn,C1TR01CON.TXREQn);
+                printf("\r\n%d%d%d",C1TR23CON.TXABTm,C1TR23CON.TXLARBm,C1TR23CON.TXREQm);
+                printf("\r\n%d%d%d",C1TR23CON.TXABTn,C1TR23CON.TXLARBn,C1TR23CON.TXREQn);
+                printf("\r\n%d%d%d",C1TR45CON.TXABTm,C1TR45CON.TXLARBm,C1TR45CON.TXREQm);
+                printf("\r\n%d%d%d",C1TR45CON.TXABTn,C1TR45CON.TXLARBn,C1TR45CON.TXREQn);
+                printf("\r\n%d%d%d",C1TR67CON.TXABTm,C1TR67CON.TXLARBm,C1TR67CON.TXREQm);
+                printf("\r\n%d%d%d",C1TR67CON.TXABTn,C1TR67CON.TXLARBn,C1TR67CON.TXREQn);
             }
             else 
             { //fail, no transmit buffer was open
                 printf("\r\nFAIL on can_putd\r\n");
             }
-            
+            //can_abort();
             out_data[0]++;
         }
         
