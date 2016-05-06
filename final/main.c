@@ -70,6 +70,7 @@ static unsigned int16 g_lowest_voltage;
 static float          g_highest_temperature;
 static int1           gb_lcd_connected;
 static int1           gb_connected;
+static int1           gb_pack_heartbeat;
 
 // Initializes the cells, clears all flags, resets highest and lowest cells
 void main_init(void)
@@ -87,6 +88,7 @@ void main_init(void)
     g_lowest_voltage = 0;
     g_highest_temperature = 0;
     gb_connected = 0;
+    gb_pack_heartbeat = 0;
 }
 
 // Returns the index for the highest voltage cell
@@ -306,6 +308,8 @@ void send_pack_status(void)
 {
     putc(STATUS_ID);
     putc(gb_connected);
+    putc(gb_pack_heartbeat);
+    gb_pack_heartbeat = !gb_pack_heartbeat;
 }
 
 int1 check_voltage(void)
