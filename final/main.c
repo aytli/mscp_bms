@@ -52,6 +52,9 @@
 // Status LED blink period
 #define HEARTBEAT_PERIOD_MS 500
 
+// Voltage threshold for balancing to occur (BALANCE_THRESHOLD / 10) mV
+#define BALANCE_THRESHOLD   1000
+
 // Returns 1 only if voltage, temperature, and current are all within the safe
 // operating ranges
 #define SAFETY_CHECK (check_voltage() & check_temperature() & check_current())
@@ -195,6 +198,10 @@ void balance(void)
             g_discharge3 &= ~(1 << (i - 24));
         }
     }
+    
+    g_discharge1 = 0x000;
+    g_discharge2 = 0x000;
+    g_discharge3 = 0x000;
 
     output_low(CSBI1);
     ltc6804_write_config(g_discharge1);
@@ -289,14 +296,14 @@ void send_current_data(void)
 
 void send_balancing_bits(void)
 {
-    int32 discharge = (g_discharge1&0x000FFF)
-            |((int32)((g_discharge2&0x000FFF)<<12))
-            |((int32)((g_discharge3&0x00003F)<<18));
+    int32 discharge = ((((int32)(g_discharge1))<< 0)&0x00000FFF)
+                     |((((int32)(g_discharge2))<<12)&0x00FFF000)
+                     |((((int32)(g_discharge3))<<24)&0x3F000000);
     putc(BALANCE_ID);
     putc((int8)(discharge&0xFF));
-    putc((int8)((discharge>> 8)&0xFF));
-    putc((int8)((discharge>>16)&0xFF));
-    putc((int8)((discharge>>24)&0x3F));
+    putc((int8)(((int32)(discharge>> 8))&0xFF));
+    putc((int8)(((int32)(discharge>>16))&0xFF));
+    putc((int8)(((int32)(discharge>>24))&0x3F));
 }
 
 void send_pack_status(void)
@@ -481,26 +488,12 @@ void main()
 {
     int i;
     
-    // CAN transmit
-    int8 out_data[8] = {0,1,2,3,4,5,6,7};
-    int32 tx_id = 0x400;
-    int1 tx_rtr = 0;
-    int1 tx_ext = 0;
-    int tx_len = 8;
-    int tx_pri = 3;
-    
-    // CAN receive
-    struct rx_stat rxstat;
-    int32 rx_id;
-    int in_data[8];
-    int8 rx_len;
-    
     // Kilovac is initially disabled
     KILOVAC_OFF;
     
     // Set up and enable timer 2 with a period of HEARTBEAT_PERIOD_MS
     setup_timer2(TMR_INTERNAL|TMR_DIV_BY_256,39*HEARTBEAT_PERIOD_MS);
-    //enable_interrupts(INT_TIMER2);
+    enable_interrupts(INT_TIMER2);
     
     main_init();
     ltc6804_init();
@@ -556,60 +549,8 @@ void main()
     
     while (true)
     {
-        // This is the polling receive routine (works)
-        /*if (can_kbhit())   //if data is waiting in buffer...
-        {
-            if (can_getd(rx_id, in_data, rx_len, rxstat)) 
-            {
-                output_toggle(TX_LED);
-                printf("\r\nRECIEVED: BUFF=%U ID=%3LX LEN=%U OVF=%U ",
-                       rxstat.buffer,
-                       rx_id,
-                       rx_len,
-                       rxstat.err_ovfl);
-                   
-                printf("FILT=%U RTR=%U EXT=%U INV=%U",
-                       rxstat.filthit,
-                       rxstat.rtr,
-                       rxstat.ext,
-                       rxstat.inv);
-                   
-                printf("\r\n    DATA = ");
-            
-                for (i = 0 ; i < rx_len ; i++)
-                {
-                    printf("%X ",in_data[i]);
-                }
-                printf("\r\n");
-            }
-            else
-            {
-                printf("\r\nFAIL on can_getd\r\n");
-            }
-        }*/
-        
-        /*if (can_tbe())
-        {
-            i = can_putd(tx_id,out_data,tx_len,tx_pri,tx_ext,tx_rtr); //put data on transmit buffer
-            if (i == 1)
-            {
-                output_toggle(STATUS);
-                printf("\r\n\nSENT %U: ID=%3LX LEN=%U ", i, tx_id, tx_len);
-                printf("PRI=%U EXT=%U RTR=%U\r\n   DATA = ", tx_pri, tx_ext, tx_rtr);
-                for (i=0;i<tx_len;i++) 
-                {
-                   printf("%X ",out_data[i]);
-                }
-            }
-            else 
-            { //fail, no transmit buffer was open
-                printf("\r\nFAIL on can_putd\r\n");
-            }
-            out_data[0]++;
-        }*/
-        
-        
-        /*if (SAFETY_CHECK)
+        output_toggle(TX_LED);
+        if (SAFETY_CHECK)
         {
             // Operating levels are safe, balance the cells
             balance();
@@ -621,7 +562,7 @@ void main()
             ltc6804_init(); // Disable balancing
             eeprom_write_errors();
             KILOVAC_OFF;    // Turn off pack
-        }*/
+        }
     }
 }
 

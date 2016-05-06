@@ -38,9 +38,6 @@
 // Number of samples for moving average
 #define N_VOLTAGE_SAMPLES 10
 
-// Voltage threshold for balancing to occur (BALANCE_THRESHOLD / 100) V
-#define BALANCE_THRESHOLD 140
-
 // Unintuitive, but the mux is actually configured in this way according
 // to the schmatic:
 //
