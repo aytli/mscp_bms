@@ -198,12 +198,8 @@ void balance(void)
             g_discharge3 &= ~(1 << (i - 24));
         }
     }
-    
-    g_discharge1 = 0x000;
-    g_discharge2 = 0x000;
-    g_discharge3 = 0x000;
 
-    output_low(CSBI1);
+    /*output_low(CSBI1);
     ltc6804_write_config(g_discharge1);
     output_high(CSBI1);
     output_low(CSBI2);
@@ -211,7 +207,7 @@ void balance(void)
     output_high(CSBI2);
     output_low(CSBI3);
     ltc6804_write_config(g_discharge3);
-    output_high(CSBI3);
+    output_high(CSBI3);*/
 }
 
 void average_voltage(void)
@@ -300,7 +296,7 @@ void send_balancing_bits(void)
                      |((((int32)(g_discharge2))<<12)&0x00FFF000)
                      |((((int32)(g_discharge3))<<24)&0x3F000000);
     putc(BALANCE_ID);
-    putc((int8)(discharge&0xFF));
+    putc((int8)(((int32)(discharge>> 0))&0xFF));
     putc((int8)(((int32)(discharge>> 8))&0xFF));
     putc((int8)(((int32)(discharge>>16))&0xFF));
     putc((int8)(((int32)(discharge>>24))&0x3F));
