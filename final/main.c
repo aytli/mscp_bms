@@ -52,6 +52,9 @@
 // Status LED blink period
 #define HEARTBEAT_PERIOD_MS 500
 
+// Balancing discharge period
+#define BALANCE_PERIOD_MS  2000
+
 // Voltage threshold for balancing to occur (BALANCE_THRESHOLD / 10) mV
 #define BALANCE_THRESHOLD   1000
 
@@ -155,6 +158,22 @@ void convert_adc_data_to_temps(void)
     }
 }
 
+void disable_balancing(void)
+{
+    g_discharge1 = 0x000;
+    g_discharge2 = 0x000;
+    g_discharge3 = 0x000;
+    output_low(CSBI1);
+    ltc6804_write_config(g_discharge1);
+    output_high(CSBI1);
+    output_low(CSBI2);
+    ltc6804_write_config(g_discharge2);
+    output_high(CSBI2);
+    output_low(CSBI3);
+    ltc6804_write_config(g_discharge3);
+    output_high(CSBI3);
+}
+
 // Discharge all the cells that are 1% of the SoC range voltage higher than
 // the lowest voltage
 void balance(void)
@@ -162,7 +181,25 @@ void balance(void)
     int i;
     int min_idx = get_lowest_voltage_cell_index();
 
-    for (i = 0 ; i < 12 ; i++)
+    for (i = 0 ; i < 3 ; i++)
+    {
+        if ((g_cell[i].average_voltage - g_cell[min_idx].average_voltage)
+            > BALANCE_THRESHOLD)
+        {
+            g_discharge1 |= 1 << i;
+        }
+        else
+        {
+            g_discharge1 &= ~(1 << i);
+        }
+    }
+    
+    // hardcoded to 0 for safety
+    g_discharge1 = 0x000;
+    g_discharge2 = 0x000;
+    g_discharge3 = 0x000;
+    
+    /*for (i = 0 ; i < 12 ; i++)
     {
         if ((g_cell[i].average_voltage - g_cell[min_idx].average_voltage)
             > BALANCE_THRESHOLD)
@@ -199,9 +236,9 @@ void balance(void)
         {
             g_discharge3 &= ~(1 << (i - 24));
         }
-    }
+    }*/
 
-    /*output_low(CSBI1);
+    output_low(CSBI1);
     ltc6804_write_config(g_discharge1);
     output_high(CSBI1);
     output_low(CSBI2);
@@ -209,7 +246,15 @@ void balance(void)
     output_high(CSBI2);
     output_low(CSBI3);
     ltc6804_write_config(g_discharge3);
-    output_high(CSBI3);*/
+    output_high(CSBI3);
+    
+    // TODO: Figure out why interrupts will not run during a delay
+    for (i = 0 ; i < BALANCE_PERIOD_MS ; i++)
+    {
+        delay_ms(1);
+    }
+    
+    disable_balancing();
 }
 
 void average_voltage(void)
@@ -455,13 +500,9 @@ void isr_timer2(void)
 {
     // Send data to LabVIEW over uart
     send_voltage_data();
-    delay_ms(1);
     send_temperature_data();
-    delay_ms(1);
     send_current_data();
-    delay_ms(1);
     send_balancing_bits();
-    delay_ms(1);
     send_pack_status();
     output_toggle(STATUS);
     
@@ -559,9 +600,9 @@ void main()
         else
         {
             // Something went wrong
-            ltc6804_init(); // Disable balancing
+            disable_balancing(); // Disable balancing
             eeprom_write_errors();
-            KILOVAC_OFF;    // Turn off pack
+            KILOVAC_OFF;         // Turn off pack
         }
     }
 }
