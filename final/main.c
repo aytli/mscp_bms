@@ -545,7 +545,7 @@ void isr_timer2(void)
 {
     static int1 b_lcd_connected = false;
     
-    output_toggle(TX_LED);
+    output_toggle(STATUS);
     
     // If the LCD is connected, display errors
     if ((input_state(LCD_SIG) == 1) && (b_lcd_connected == false))
@@ -576,9 +576,9 @@ void isr_timer4(void)
     if ((ms >= TELEMETRY_PERIOD_MS) && can_tbe())
     {
         ms = 0;
-        output_toggle(STATUS);
+        output_toggle(TX_LED);
         
-        // Send telemetry data
+        // Update telemetry data pages
         update_voltage_data();
         update_temperature_data();
         update_current_data();
