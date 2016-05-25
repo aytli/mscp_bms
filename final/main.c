@@ -52,6 +52,9 @@
 // Status LED blink period
 #define HEARTBEAT_PERIOD_MS 500
 
+// Telemetry data sending period
+#define TELEMETRY_PERIOD_MS 20
+
 // Balancing discharge period
 #define BALANCE_PERIOD_MS  2000
 
@@ -61,6 +64,58 @@
 // Returns 1 only if voltage, temperature, and current are all within the safe
 // operating ranges
 #define SAFETY_CHECK (check_voltage() & check_temperature() & check_current())
+
+// CAN bus defines
+#define TX_PRI 3
+#define TX_EXT 0
+#define TX_RTR 0
+
+#define CAN_SEND_DATA_PACKET(i) \
+    can_putd(g_can_id[i],gp_can_data_address[i],g_can_len[i],TX_PRI,TX_EXT,TX_RTR)
+
+// Creates a list of CAN packet IDs
+enum
+{
+    CAN_ID_TABLE(EXPAND_AS_CAN_ID_ENUM)
+};
+
+// Creates a list of CAN packet lengths
+enum
+{
+    CAN_ID_TABLE(EXPAND_AS_CAN_LEN_ENUM)
+};
+
+// Creates a list of telemetry packet IDs
+enum
+{
+    TELEM_ID_TABLE(EXPAND_AS_TELEM_ID_ENUM)
+};
+
+// Creates a list of telemetry packet lengths
+enum
+{
+    TELEM_ID_TABLE(EXPAND_AS_TELEM_LEN_ENUM)
+};
+
+// Creates an array of CAN packet IDs
+static int16 g_can_id[N_CAN_ID] =
+{
+    CAN_ID_TABLE(EXPAND_AS_CAN_ID_ARRAY)
+};
+
+// Creates an array of CAN packet lengths
+static int16 g_can_len[N_CAN_ID] =
+{
+    CAN_ID_TABLE(EXPAND_AS_CAN_LEN_ARRAY)
+};
+
+// Telemetry data pages
+static int8 g_bps_voltage_page[TELEM_BPS_VOLTAGE_LEN];
+static int8 g_bps_temperature_page[TELEM_BPS_TEMPERATURE_LEN];
+static int8 g_bps_current_page[TELEM_BPS_CURRENT_LEN];
+static int8 g_bps_balancing_page[TELEM_BPS_BALANCING_LEN];
+static int8 g_bps_status_page[TELEM_BPS_STATUS_LEN];
+static int * gp_can_data_address[N_CAN_ID] = {CAN_ID_TABLE(EXPAND_AS_DATA_ADDRESS_ARRAY)};
 
 static cell_t         g_cell[N_CELLS];
 static temperature_t  g_temperature[N_ADC_CHANNELS];
@@ -73,7 +128,6 @@ static unsigned int16 g_lowest_voltage;
 static float          g_highest_temperature;
 static int1           gb_lcd_connected;
 static int1           gb_connected;
-static int1           gb_pack_heartbeat;
 
 // Initializes the cells, clears all flags, resets highest and lowest cells
 void main_init(void)
@@ -90,8 +144,7 @@ void main_init(void)
     g_highest_voltage = 0;
     g_lowest_voltage = 0;
     g_highest_temperature = 0;
-    gb_connected = 0;
-    gb_pack_heartbeat = 0;
+    gb_connected = false;
 }
 
 // Returns the index for the highest voltage cell
@@ -312,29 +365,34 @@ void average_current(void)
 void send_voltage_data(void)
 {
     int i;
-    putc(VOLTAGE_ID);
+    //putc(VOLTAGE_ID);
     for (i = 0 ; i < N_CELLS ; i ++)
     {
-        putc((int8)(g_cell[i].average_voltage >> 8));
-        putc((int8)(g_cell[i].average_voltage & 0x00FF));
+        //putc((int8)(g_cell[i].average_voltage >> 8));
+        //putc((int8)(g_cell[i].average_voltage & 0x00FF));
+        g_bps_voltage_page[2*i]   = (int8)(g_cell[i].average_voltage >> 8);
+        g_bps_voltage_page[2*i+1] = (int8)(g_cell[i].average_voltage & 0x00FF);
     }
 }
 
 void send_temperature_data(void)
 {
     int i;
-    putc(TEMP_ID);
+    //putc(TEMP_ID);
     for (i = 0 ; i < N_ADC_CHANNELS ; i++)
     {
-        putc((unsigned int8)(g_temperature[i].converted));
+        //putc((unsigned int8)(g_temperature[i].converted));
+        g_bps_temperature_page[i] = (unsigned int8) (g_temperature[i].converted);
     }
 }
 
 void send_current_data(void)
 {
-    putc(CURRENT_ID);
-    putc((int8)(g_current.average&0xFF));
-    putc((int8)((g_current.average>>8)&0xFF));
+    //putc(CURRENT_ID);
+    //putc((int8)(g_current.average&0xFF));
+    //putc((int8)((g_current.average>>8)&0xFF));
+    g_bps_current_page[0] = (int8) (g_current.average&0xFF);
+    g_bps_current_page[1] = (int8) ((g_current.average>>8)&0xFF);
 }
 
 void send_balancing_bits(void)
@@ -342,19 +400,23 @@ void send_balancing_bits(void)
     int32 discharge = ((((int32)(g_discharge1))<< 0)&0x00000FFF)
                      |((((int32)(g_discharge2))<<12)&0x00FFF000)
                      |((((int32)(g_discharge3))<<24)&0x3F000000);
-    putc(BALANCE_ID);
-    putc((int8)(((int32)(discharge>> 0))&0xFF));
-    putc((int8)(((int32)(discharge>> 8))&0xFF));
-    putc((int8)(((int32)(discharge>>16))&0xFF));
-    putc((int8)(((int32)(discharge>>24))&0x3F));
+    //putc(BALANCE_ID);
+    //putc((int8)(((int32)(discharge>> 0))&0xFF));
+    //putc((int8)(((int32)(discharge>> 8))&0xFF));
+    //putc((int8)(((int32)(discharge>>16))&0xFF));
+    //putc((int8)(((int32)(discharge>>24))&0x3F));
+    g_bps_balancing_page[0] = (int8) (((int32)(discharge>>  0))&0xFF);
+    g_bps_balancing_page[1] = (int8) (((int32)(discharge>>  8))&0xFF);
+    g_bps_balancing_page[2] = (int8) (((int32)(discharge>> 16))&0xFF);
+    g_bps_balancing_page[3] = (int8) (((int32)(discharge>> 24))&0xFF);
 }
 
 void send_pack_status(void)
 {
-    putc(STATUS_ID);
-    putc(gb_connected);
-    putc(gb_pack_heartbeat);
-    gb_pack_heartbeat = !gb_pack_heartbeat;
+    //putc(STATUS_ID);
+    //putc(gb_connected);
+    //putc(gb_pack_heartbeat);
+    g_bps_status_page[0] = gb_connected;
 }
 
 int1 check_voltage(void)
@@ -498,14 +560,9 @@ void display_errors(void)
 #int_timer2 level = 4
 void isr_timer2(void)
 {
-    // Send data to LabVIEW over uart
-    send_voltage_data();
-    send_temperature_data();
-    send_current_data();
-    send_balancing_bits();
-    send_pack_status();
-    output_toggle(STATUS);
+    output_toggle(TX_LED);
     
+    // If the LCD is connected, display errors
     if ((input_state(LCD_SIG) == 1) && (gb_lcd_connected == false))
     {
         // LCD connected, debounce the pin
@@ -524,10 +581,48 @@ void isr_timer2(void)
     }
 }
 
+#int_timer4 level = 4
+void isr_timer4(void)
+{
+    static int ms = 0;
+    static int i = 0;
+    
+    if ((ms >= TELEMETRY_PERIOD_MS) && can_tbe())
+    {
+        ms = 0;
+        output_toggle(STATUS);
+        
+        // Send telemetry data
+        send_voltage_data();
+        send_temperature_data();
+        send_current_data();
+        send_balancing_bits();
+        send_pack_status();
+        
+        CAN_SEND_DATA_PACKET(i);
+        if (i == (N_CAN_ID-1))
+        {
+            i = 0;
+        }
+        else
+        {
+            i++;
+        }
+    }
+    else
+    {
+        ms++;
+    }
+}
+
 // Main
 void main()
 {
     int i;
+    struct rx_stat rxstat;
+    int32 rx_id;
+    int in_data[8];
+    int8 rx_len;
     
     // Kilovac is initially disabled
     KILOVAC_OFF;
@@ -535,6 +630,10 @@ void main()
     // Set up and enable timer 2 with a period of HEARTBEAT_PERIOD_MS
     setup_timer2(TMR_INTERNAL|TMR_DIV_BY_256,39*HEARTBEAT_PERIOD_MS);
     enable_interrupts(INT_TIMER2);
+    
+    // Set up and enable timer 4 with a period of 1ms
+    setup_timer4(TMR_INTERNAL|TMR_DIV_BY_256,39);
+    enable_interrupts(INT_TIMER4);
     
     main_init();
     ltc6804_init();
@@ -588,13 +687,14 @@ void main()
         KILOVAC_OFF;
     }
     
+    int8 data[8] = {1,2,3,4,5,6,7,8};
+    
     while (true)
     {
-        output_toggle(TX_LED);
         if (SAFETY_CHECK)
         {
             // Operating levels are safe, balance the cells
-            balance();
+            //balance();
             delay_ms(100);
         }
         else
