@@ -126,7 +126,6 @@ static int            g_highest_temperature_cell_index;
 static unsigned int16 g_highest_voltage;
 static unsigned int16 g_lowest_voltage;
 static float          g_highest_temperature;
-static int1           gb_lcd_connected;
 static int1           gb_connected;
 
 // Initializes the cells, clears all flags, resets highest and lowest cells
@@ -362,60 +361,44 @@ void average_current(void)
     g_current.average = (unsigned int16) (sum/N_CURRENT_SAMPLES);
 }
 
-void send_voltage_data(void)
+void update_voltage_data(void)
 {
     int i;
-    //putc(VOLTAGE_ID);
     for (i = 0 ; i < N_CELLS ; i ++)
     {
-        //putc((int8)(g_cell[i].average_voltage >> 8));
-        //putc((int8)(g_cell[i].average_voltage & 0x00FF));
         g_bps_voltage_page[2*i]   = (int8)(g_cell[i].average_voltage >> 8);
         g_bps_voltage_page[2*i+1] = (int8)(g_cell[i].average_voltage & 0x00FF);
     }
 }
 
-void send_temperature_data(void)
+void update_temperature_data(void)
 {
     int i;
-    //putc(TEMP_ID);
     for (i = 0 ; i < N_ADC_CHANNELS ; i++)
     {
-        //putc((unsigned int8)(g_temperature[i].converted));
         g_bps_temperature_page[i] = (unsigned int8) (g_temperature[i].converted);
     }
 }
 
-void send_current_data(void)
+void update_current_data(void)
 {
-    //putc(CURRENT_ID);
-    //putc((int8)(g_current.average&0xFF));
-    //putc((int8)((g_current.average>>8)&0xFF));
     g_bps_current_page[0] = (int8) (g_current.average&0xFF);
     g_bps_current_page[1] = (int8) ((g_current.average>>8)&0xFF);
 }
 
-void send_balancing_bits(void)
+void update_balancing_bits(void)
 {
     int32 discharge = ((((int32)(g_discharge1))<< 0)&0x00000FFF)
                      |((((int32)(g_discharge2))<<12)&0x00FFF000)
                      |((((int32)(g_discharge3))<<24)&0x3F000000);
-    //putc(BALANCE_ID);
-    //putc((int8)(((int32)(discharge>> 0))&0xFF));
-    //putc((int8)(((int32)(discharge>> 8))&0xFF));
-    //putc((int8)(((int32)(discharge>>16))&0xFF));
-    //putc((int8)(((int32)(discharge>>24))&0x3F));
     g_bps_balancing_page[0] = (int8) (((int32)(discharge>>  0))&0xFF);
     g_bps_balancing_page[1] = (int8) (((int32)(discharge>>  8))&0xFF);
     g_bps_balancing_page[2] = (int8) (((int32)(discharge>> 16))&0xFF);
     g_bps_balancing_page[3] = (int8) (((int32)(discharge>> 24))&0xFF);
 }
 
-void send_pack_status(void)
+void update_pack_status(void)
 {
-    //putc(STATUS_ID);
-    //putc(gb_connected);
-    //putc(gb_pack_heartbeat);
     g_bps_status_page[0] = gb_connected;
 }
 
@@ -556,31 +539,34 @@ void display_errors(void)
     eeprom_clear();
 }
 
-// Timer 2 is used to send LabVIEW data
+// Timer 2 blinks heartbeat LED, checks for status of LCD
 #int_timer2 level = 4
 void isr_timer2(void)
 {
+    static int1 b_lcd_connected = false;
+    
     output_toggle(TX_LED);
     
     // If the LCD is connected, display errors
-    if ((input_state(LCD_SIG) == 1) && (gb_lcd_connected == false))
+    if ((input_state(LCD_SIG) == 1) && (b_lcd_connected == false))
     {
         // LCD connected, debounce the pin
         delay_ms(1000);
         if (input_state(LCD_SIG) == 1)
         {
             // LCD still connected, set flag to true, read and display errors
-            gb_lcd_connected = true;
+            b_lcd_connected = true;
             display_errors();
         }
     }
     else if (input_state(LCD_SIG) == 0)
     {
         // LCD not connected, clear flag
-        gb_lcd_connected = false;
+        b_lcd_connected = false;
     }
 }
 
+// Timer 4 sends telemetry data over CANbus
 #int_timer4 level = 4
 void isr_timer4(void)
 {
@@ -593,11 +579,11 @@ void isr_timer4(void)
         output_toggle(STATUS);
         
         // Send telemetry data
-        send_voltage_data();
-        send_temperature_data();
-        send_current_data();
-        send_balancing_bits();
-        send_pack_status();
+        update_voltage_data();
+        update_temperature_data();
+        update_current_data();
+        update_balancing_bits();
+        update_pack_status();
         
         CAN_SEND_DATA_PACKET(i);
         if (i == (N_CAN_ID-1))
@@ -686,8 +672,6 @@ void main()
         eeprom_write_errors();
         KILOVAC_OFF;
     }
-    
-    int8 data[8] = {1,2,3,4,5,6,7,8};
     
     while (true)
     {
