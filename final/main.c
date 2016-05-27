@@ -382,8 +382,8 @@ void update_temperature_data(void)
 
 void update_current_data(void)
 {
-    g_bps_current_page[0] = (int8) (g_current.average&0xFF);
-    g_bps_current_page[1] = (int8) ((g_current.average>>8)&0xFF);
+    g_bps_current_page[0] = (int8) ((g_current.average>>8)&0xFF);
+    g_bps_current_page[1] = (int8) (g_current.average&0xFF);
 }
 
 void update_balancing_bits(void)
@@ -391,10 +391,10 @@ void update_balancing_bits(void)
     int32 discharge = ((((int32)(g_discharge1))<< 0)&0x00000FFF)
                      |((((int32)(g_discharge2))<<12)&0x00FFF000)
                      |((((int32)(g_discharge3))<<24)&0x3F000000);
-    g_bps_balancing_page[0] = (int8) (((int32)(discharge>>  0))&0xFF);
-    g_bps_balancing_page[1] = (int8) (((int32)(discharge>>  8))&0xFF);
-    g_bps_balancing_page[2] = (int8) (((int32)(discharge>> 16))&0xFF);
-    g_bps_balancing_page[3] = (int8) (((int32)(discharge>> 24))&0xFF);
+    g_bps_balancing_page[0] = (int8) (((int32)(discharge>> 24))&0xFF);
+    g_bps_balancing_page[1] = (int8) (((int32)(discharge>> 16))&0xFF);
+    g_bps_balancing_page[2] = (int8) (((int32)(discharge>>  8))&0xFF);
+    g_bps_balancing_page[3] = (int8) (((int32)(discharge>>  0))&0xFF);
 }
 
 void update_pack_status(void)
