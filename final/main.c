@@ -655,7 +655,6 @@ void main()
             // Operating levels are safe, balance the cells
             //balance();
             delay_ms(100);
-            printf("\r\nAVERAGE: %Ld",g_current.average);
         }
         else
         {
