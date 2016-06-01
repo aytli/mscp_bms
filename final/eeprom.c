@@ -72,9 +72,9 @@ void eeprom_read(int8 * data)
 
 void eeprom_clear(void)
 {
-    g_ov_error = EEPROM_SUCCESS;
-    g_uv_error = EEPROM_SUCCESS;
-    g_ot_error = EEPROM_SUCCESS;
+    g_ov_error      = EEPROM_SUCCESS;
+    g_uv_error      = EEPROM_SUCCESS;
+    g_ot_error      = EEPROM_SUCCESS;
     g_current_error = EEPROM_SUCCESS;
     eeprom_write_errors();
 }

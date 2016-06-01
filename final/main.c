@@ -32,14 +32,14 @@
 #define STATUS_ID   0x77
 
 // Kilovac control
-#define KILOVAC_ON         \
-    gb_connected = 1;      \
-    output_high(RX_LED);   \
+#define KILOVAC_ON        \
+    gb_connected = true;  \
+    output_high(RX_LED);  \
     output_high(KVAC_PIN);
 
-#define KILOVAC_OFF        \
-    gb_connected = 0;      \
-    output_low(RX_LED);    \
+#define KILOVAC_OFF       \
+    gb_connected = false; \
+    output_low(RX_LED);   \
     output_low(KVAC_PIN);
 
 // Protection limits
@@ -475,7 +475,6 @@ int1 check_current(void)
     else
     {
         // current is fine
-        eeprom_set_current_error(EEPROM_SUCCESS);
         return 1;
     }
 }
@@ -517,6 +516,7 @@ void display_errors(void)
 #int_timer2 level = 4
 void isr_timer2(void)
 {
+    static int i;
     static int1 b_lcd_connected = false;
     
     output_toggle(STATUS);
@@ -525,7 +525,11 @@ void isr_timer2(void)
     if ((input_state(LCD_SIG) == 1) && (b_lcd_connected == false))
     {
         // LCD connected, debounce the pin
-        delay_ms(1000);
+        for (i = 0 ; i < LCD_DEBOUNCE_MS ; i++)
+        {
+            delay_ms(1);
+        }
+        
         if (input_state(LCD_SIG) == 1)
         {
             // LCD still connected, set flag to true, read and display errors
@@ -559,6 +563,7 @@ void isr_timer4(void)
         update_balancing_bits();
         update_pack_status();
         
+        // Send a packet of CAN data
         CAN_SEND_DATA_PACKET(i);
         if (i == (N_CAN_ID-1))
         {
