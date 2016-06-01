@@ -14,6 +14,7 @@
 #include "lcd.c"
 #include "hall_sensor.c"
 #include "eeprom.c"
+#include "can_telem.h"
 #include "can_PIC24.c"
 
 // PIC internal register addresses
@@ -46,14 +47,14 @@
 #define VOLTAGE_MIN            27500 // 2.75V
 #define TEMP_WARNING              60 // 60°C, actual value to be determined
 #define TEMP_CRITICAL             70 // 70°C, actual value to be determined
-#define CURRENT_DISCHARGE_LIMIT 1000 // -80A, actual value to be determined
-#define CURRENT_CHARGE_LIMIT    4000 // +40A, actual value to be determined
+#define CURRENT_DISCHARGE_LIMIT 3137 // -20A, actual value to be determined
+#define CURRENT_CHARGE_LIMIT    2758 // +10A, actual value to be determined
 
 // Status LED blink period
 #define HEARTBEAT_PERIOD_MS 500
 
 // Telemetry data sending period
-#define TELEMETRY_PERIOD_MS 20
+#define TELEMETRY_PERIOD_MS 200
 
 // Balancing discharge period
 #define BALANCE_PERIOD_MS  2000
@@ -72,30 +73,6 @@
 
 #define CAN_SEND_DATA_PACKET(i) \
     can_putd(g_can_id[i],gp_can_data_address[i],g_can_len[i],TX_PRI,TX_EXT,TX_RTR)
-
-// Creates a list of CAN packet IDs
-enum
-{
-    CAN_ID_TABLE(EXPAND_AS_CAN_ID_ENUM)
-};
-
-// Creates a list of CAN packet lengths
-enum
-{
-    CAN_ID_TABLE(EXPAND_AS_CAN_LEN_ENUM)
-};
-
-// Creates a list of telemetry packet IDs
-enum
-{
-    TELEM_ID_TABLE(EXPAND_AS_TELEM_ID_ENUM)
-};
-
-// Creates a list of telemetry packet lengths
-enum
-{
-    TELEM_ID_TABLE(EXPAND_AS_TELEM_LEN_ENUM)
-};
 
 // Creates an array of CAN packet IDs
 static int16 g_can_id[N_CAN_ID] =
@@ -482,16 +459,16 @@ int1 check_current(void)
     
     // Hall effect sensor is uncalibrated
     // This function will always return true until calibration is done
-    return 1;
+    //return 1;
     
-    /*if (g_current >= CURRENT_DISCHARGE_LIMIT)
+    if (g_current.average >= CURRENT_DISCHARGE_LIMIT)
     {
         // discharge current protection
         // shut off pack, write OC error to eeprom
         eeprom_set_current_error(OC_ERROR);
         return 0;
     }
-    else if (g_current <= CURRENT_CHARGE_LIMIT)
+    else if (g_current.average <= CURRENT_CHARGE_LIMIT)
     {
         // charge current protection
         // shut off pack, write UC error to eeprom
@@ -503,7 +480,7 @@ int1 check_current(void)
         // current is fine
         eeprom_set_current_error(EEPROM_SUCCESS);
         return 1;
-    }*/
+    }
 }
 
 // Reads error data from the eeprom and displays it on the lcd
@@ -680,6 +657,7 @@ void main()
             // Operating levels are safe, balance the cells
             //balance();
             delay_ms(100);
+            printf("\r\nAVERAGE: %Ld",g_current.average);
         }
         else
         {
