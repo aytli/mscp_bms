@@ -87,12 +87,13 @@ static int16 g_can_len[N_CAN_ID] =
 };
 
 // Telemetry data pages
-static int8 g_bps_voltage_page[TELEM_BPS_VOLTAGE_LEN];
-static int8 g_bps_temperature_page[TELEM_BPS_TEMPERATURE_LEN];
-static int8 g_bps_current_page[TELEM_BPS_CURRENT_LEN];
-static int8 g_bps_balancing_page[TELEM_BPS_BALANCING_LEN];
-static int8 g_bps_status_page[TELEM_BPS_STATUS_LEN];
-static int * gp_can_data_address[N_CAN_ID] = {CAN_ID_TABLE(EXPAND_AS_DATA_ADDRESS_ARRAY)};
+TELEM_ID_TABLE(EXPAND_AS_TELEM_PAGE_DECLARATIONS)
+
+// Creates an array of CAN packet addresses
+static int * gp_can_data_address[N_CAN_ID] =
+{
+    CAN_ID_TABLE(EXPAND_AS_DATA_ADDRESS_ARRAY)
+};
 
 static cell_t         g_cell[N_CELLS];
 static temperature_t  g_temperature[N_ADC_CHANNELS];

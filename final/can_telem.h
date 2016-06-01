@@ -41,17 +41,20 @@ enum {CAN_ID_TABLE(EXPAND_AS_CAN_LEN_ENUM)};
 // TELEMETRY_DEFINES /////
 //////////////////////////
 
-#define EXPAND_AS_TELEM_ID_ENUM(a,b,c)  a##_ID  = b,
-#define EXPAND_AS_TELEM_LEN_ENUM(a,b,c) a##_LEN = c,
+#define EXPAND_AS_TELEM_ID_ENUM(a,b,c,d)  a##_ID  = b,
+#define EXPAND_AS_TELEM_LEN_ENUM(a,b,c,d) a##_LEN = c,
+#define EXPAND_AS_TELEM_LEN_ARRAY(a,b,c,d)          c,
+#define EXPAND_AS_TELEM_PAGE_ARRAY(a,b,c,d)         d,
+#define EXPAND_AS_TELEM_PAGE_DECLARATIONS(a,b,c,d) static int8 d[c];
 
 // X macro table of telemetry packets
-//        Packet name            ,    ID, Length
-#define TELEM_ID_TABLE(ENTRY)                 \
-    ENTRY(TELEM_BPS_VOLTAGE      ,  0x0B, 60) \
-    ENTRY(TELEM_BPS_TEMPERATURE  ,  0x0D, 24) \
-    ENTRY(TELEM_BPS_CURRENT      ,  0x11,  2) \
-    ENTRY(TELEM_BPS_BALANCING    ,  0x13,  4) \
-    ENTRY(TELEM_BPS_STATUS       ,  0x17,  1)
+//        Packet name            ,    ID, Length, Page array
+#define TELEM_ID_TABLE(ENTRY)                                         \
+    ENTRY(TELEM_BPS_VOLTAGE      ,  0x0B, 60, g_bps_voltage_page)     \
+    ENTRY(TELEM_BPS_TEMPERATURE  ,  0x0D, 24, g_bps_temperature_page) \
+    ENTRY(TELEM_BPS_CURRENT      ,  0x11,  2, g_bps_current_page)     \
+    ENTRY(TELEM_BPS_BALANCING    ,  0x13,  4, g_bps_balancing_page)   \
+    ENTRY(TELEM_BPS_STATUS       ,  0x17,  1, g_bps_status_page)
 #define N_TELEM_ID 5
 
 enum {TELEM_ID_TABLE(EXPAND_AS_TELEM_ID_ENUM)};
