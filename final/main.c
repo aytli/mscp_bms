@@ -458,10 +458,6 @@ int1 check_current(void)
     g_current.raw = hall_sensor_read_data();
     average_current();
     
-    // Hall effect sensor is uncalibrated
-    // This function will always return true until calibration is done
-    //return 1;
-    
     if (g_current.average >= CURRENT_DISCHARGE_LIMIT)
     {
         // discharge current protection
@@ -609,14 +605,10 @@ void main()
     // Initialize CANbus, configure outputs, enable transfer buffers
     can_init();
     set_tris_f((*0x02DE&0xFFFD)|0x01); // set F0 to CANRX, F1 to CANTX
-    can_enable_b_transfer(0);
-    can_enable_b_transfer(1);
-    can_enable_b_transfer(2);
-    can_enable_b_transfer(3);
-    can_enable_b_transfer(4);
-    can_enable_b_transfer(5);
-    can_enable_b_transfer(6);
-    can_enable_b_transfer(7);
+    for (i = 0 ; i < 8 ; i++)
+    {
+        can_enable_b_transfer(1);
+    }
     
     // Populate running averages
     for (i = 0 ; i < N_VOLTAGE_SAMPLES ; i++)
