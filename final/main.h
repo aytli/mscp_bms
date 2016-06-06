@@ -51,3 +51,15 @@
 #define RX_LED    PIN_G13 // Test LED (RX)
 #define KVAC_PIN  PIN_A13 // Kilovac control pin
 #define FAN_PIN   PIN_D7  // Fan PWM signal
+
+// State machine states
+enum
+{
+    SAFETY_CHECK,
+    BALANCE_PENDING,
+    BALANCING,
+    SEND_ARRAY_DISCONNECT,
+    PMS_RESPONSE_PENDING,
+    DISCONNECT_PACK,
+    N_STATES
+};

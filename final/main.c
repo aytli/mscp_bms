@@ -60,17 +60,16 @@
 #define BALANCE_PERIOD_MS  2000
 
 // Voltage threshold for balancing to occur (BALANCE_THRESHOLD / 10) mV
-#define BALANCE_THRESHOLD   1000
+#define BALANCE_THRESHOLD   500
 
 // Timeout period for PMS response
 #define PMS_RESPONSE_TIMEOUT_MS 1000
 
+// Timeout period for the balancing command
+#define BALANCING_TIMEOUT_MS 500
+
 // MPPT turn off time
 #define MPPT_DELAY_MS 10
-
-// Returns 1 only if voltage, temperature, and current are all within the safe
-// operating ranges
-#define SAFETY_CHECK (check_voltage() & check_temperature() & check_current())
 
 // CAN bus defines
 #define TX_PRI 3
@@ -112,6 +111,8 @@ static unsigned int16 g_lowest_voltage;
 static float          g_highest_temperature;
 static int1           gb_connected;
 
+static int g_state;
+
 // Initializes the cells, clears all flags, resets highest and lowest cells
 void main_init(void)
 {
@@ -128,6 +129,7 @@ void main_init(void)
     g_lowest_voltage = 0;
     g_highest_temperature = 0;
     gb_connected = false;
+    g_state = SAFETY_CHECK;
 }
 
 // Returns the index for the highest voltage cell
@@ -217,7 +219,7 @@ void balance(void)
     int i;
     int min_idx = get_lowest_voltage_cell_index();
 
-    for (i = 0 ; i < 3 ; i++)
+    /*for (i = 0 ; i < 3 ; i++)
     {
         if ((g_cell[i].average_voltage - g_cell[min_idx].average_voltage)
             > BALANCE_THRESHOLD)
@@ -233,9 +235,9 @@ void balance(void)
     // hardcoded to 0 for safety
     g_discharge1 = 0x000;
     g_discharge2 = 0x000;
-    g_discharge3 = 0x000;
+    g_discharge3 = 0x000;*/
     
-    /*for (i = 0 ; i < 12 ; i++)
+    for (i = 0 ; i < 12 ; i++)
     {
         if ((g_cell[i].average_voltage - g_cell[min_idx].average_voltage)
             > BALANCE_THRESHOLD)
@@ -272,9 +274,9 @@ void balance(void)
         {
             g_discharge3 &= ~(1 << (i - 24));
         }
-    }*/
+    }
 
-    output_low(CSBI1);
+    /*output_low(CSBI1);
     ltc6804_write_config(g_discharge1);
     output_high(CSBI1);
     output_low(CSBI2);
@@ -282,7 +284,7 @@ void balance(void)
     output_high(CSBI2);
     output_low(CSBI3);
     ltc6804_write_config(g_discharge3);
-    output_high(CSBI3);
+    output_high(CSBI3);*/
     
     // TODO: Figure out why interrupts will not run during a delay
     for (i = 0 ; i < BALANCE_PERIOD_MS ; i++)
@@ -586,6 +588,114 @@ void isr_timer4(void)
     }
 }
 
+void safety_check_state(void)
+{
+    int1 b_success = true;
+    
+    b_success &= check_voltage();
+    b_success &= check_temperature();
+    b_success &= check_current();
+    
+    if (b_success == true)
+    {
+        // All parameters within safe range, balance the cells
+        g_state = BALANCE_PENDING;
+    }
+    else
+    {
+        // Something went wrong, disconnect the array
+        g_state = SEND_ARRAY_DISCONNECT;
+    }
+}
+
+void balance_pending_state(void)
+{
+    static int timeout_ms = 0;
+    struct rx_stat rxstat;
+    int32 rx_id;
+    int in_data[8];
+    int8 rx_len;
+    
+    if (timeout_ms >= BALANCING_TIMEOUT_MS)
+    {
+        // Response timed out, proceed to disconnect pack
+        g_state = SAFETY_CHECK;
+    }
+    else if (kbhit())
+    {
+        if (can_getd(rx_id, in_data, rx_len, rxstat))
+        {
+            if (rx_id == 0x40B)
+            {
+                // Response received from PMS, disconnect the pack
+                timeout_ms = 0;
+                g_state = BALANCING;
+            }
+        }
+    }
+    else
+    {
+        // No timeout, no CAN packet, increment timeout counter
+        delay_ms(1);
+        timeout_ms++;
+        g_state = BALANCE_PENDING;
+    }
+}
+
+void balancing_state(void)
+{
+    // Balance the cells, continue safety checks
+    balance();
+    g_state = SAFETY_CHECK;
+}
+
+void send_array_disconnect_state(void)
+{
+    // Signal the PMS to disconnect the array, wait for response
+    can_putd(COMMAND_PMS_DISCONNECT_ARRAY_ID,0,0,TX_PRI,TX_EXT,TX_RTR);
+    g_state = PMS_RESPONSE_PENDING;
+}
+
+void pms_response_pending_state(void)
+{
+    static int timeout_ms = 0;
+    struct rx_stat rxstat;
+    int32 rx_id;
+    int in_data[8];
+    int8 rx_len;
+    
+    if (timeout_ms >= PMS_RESPONSE_TIMEOUT_MS)
+    {
+        // Response timed out, proceed to disconnect pack
+        g_state = DISCONNECT_PACK;
+    }
+    else if (kbhit())
+    {
+        if (can_getd(rx_id, in_data, rx_len, rxstat))
+        {
+            if (rx_id == COMMAND_PMS_DISCONNECT_ARRAY_ID)
+            {
+                // Response received from PMS, disconnect the pack
+                timeout_ms = 0;
+                g_state = DISCONNECT_PACK;
+            }
+        }
+    }
+    else
+    {
+        // No timeout, no CAN packet, increment timeout counter
+        delay_ms(1);
+        timeout_ms++;
+        g_state = PMS_RESPONSE_PENDING;
+    }
+}
+
+void disconnect_pack_state(void)
+{
+    delay_ms(MPPT_DELAY_MS);
+    KILOVAC_OFF;
+}
+
 // Main
 void main()
 {
@@ -642,7 +752,7 @@ void main()
     }
     
     // Perform startup test
-    if (SAFETY_CHECK == 1)
+    if ((check_voltage() & check_temperature() & check_current()) == true)
     {
         // Voltage, temperature, and current are all safe, connect the pack
         delay_ms(500);
@@ -657,44 +767,28 @@ void main()
     
     while (true)
     {
-        if (SAFETY_CHECK)
+        switch(g_state)
         {
-            // Operating levels are safe, balance the cells
-            //balance();
-            delay_ms(100);
-        }
-        else
-        {
-            // Something went wrong
-            disable_balancing(); // Disable balancing
-            eeprom_write_errors();
-            
-            // Signal the PMS to turn off the array
-            can_putd(COMMAND_PMS_DISCONNECT_ARRAY_ID,0,0,TX_PRI,TX_EXT,TX_RTR);
-            
-            // Wait for the PMS to respond
-            timeout_ms = 0;
-            while (timeout_ms <= PMS_RESPONSE_TIMEOUT_MS)
-            {
-                if (kbhit())
-                {
-                    if (can_getd(rx_id, in_data, rx_len, rxstat))
-                    {
-                        if (rx_id == COMMAND_PMS_DISCONNECT_ARRAY_ID)
-                        {
-                            // Response received from PMS, exit loop
-                            break;
-                        }
-                    }
-                }
-                delay_ms(1);
-                timeout_ms++;
-            }
-            
-            // Response received, or timed out
-            // Either way we wait for the MPPT to turn off before disconnecting the pack
-            delay_ms(MPPT_DELAY_MS);
-            KILOVAC_OFF;         // Turn off pack
+            case SAFETY_CHECK:
+                safety_check_state();
+                break;
+            case BALANCE_PENDING:
+                balance_pending_state();
+                break;
+            case BALANCING:
+                balancing_state();
+                break;
+            case SEND_ARRAY_DISCONNECT:
+                send_array_disconnect_state();
+                break;
+            case PMS_RESPONSE_PENDING:
+                pms_response_pending_state();
+                break;
+            case DISCONNECT_PACK:
+                disconnect_pack_state();
+                break;
+            default:
+                break;
         }
     }
 }
