@@ -62,6 +62,12 @@
 // Voltage threshold for balancing to occur (BALANCE_THRESHOLD / 10) mV
 #define BALANCE_THRESHOLD   1000
 
+// Timeout period for PMS response
+#define PMS_RESPONSE_TIMEOUT_MS 1000
+
+// MPPT turn off time
+#define MPPT_DELAY_MS 10
+
 // Returns 1 only if voltage, temperature, and current are all within the safe
 // operating ranges
 #define SAFETY_CHECK (check_voltage() & check_temperature() & check_current())
@@ -588,6 +594,7 @@ void main()
     int32 rx_id;
     int in_data[8];
     int8 rx_len;
+    int8 timeout_ms;
     
     // Kilovac is initially disabled
     KILOVAC_OFF;
@@ -661,6 +668,32 @@ void main()
             // Something went wrong
             disable_balancing(); // Disable balancing
             eeprom_write_errors();
+            
+            // Signal the PMS to turn off the array
+            can_putd(COMMAND_PMS_DISCONNECT_ARRAY_ID,0,0,TX_PRI,TX_EXT,TX_RTR);
+            
+            // Wait for the PMS to respond
+            timeout_ms = 0;
+            while (timeout_ms <= PMS_RESPONSE_TIMEOUT_MS)
+            {
+                if (kbhit())
+                {
+                    if (can_getd(rx_id, in_data, rx_len, rxstat))
+                    {
+                        if (rx_id == COMMAND_PMS_DISCONNECT_ARRAY_ID)
+                        {
+                            // Response received from PMS, exit loop
+                            break;
+                        }
+                    }
+                }
+                delay_ms(1);
+                timeout_ms++;
+            }
+            
+            // Response received, or timed out
+            // Either way we wait for the MPPT to turn off before disconnecting the pack
+            delay_ms(MPPT_DELAY_MS);
             KILOVAC_OFF;         // Turn off pack
         }
     }
