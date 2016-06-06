@@ -110,8 +110,9 @@ static unsigned int16 g_highest_voltage;
 static unsigned int16 g_lowest_voltage;
 static float          g_highest_temperature;
 static int1           gb_connected;
-
-static int g_state;
+static int1           gb_balance_enable;
+static int1           gb_pms_response_received;
+static bps_state      g_state;
 
 // Initializes the cells, clears all flags, resets highest and lowest cells
 void main_init(void)
@@ -588,6 +589,32 @@ void isr_timer4(void)
     }
 }
 
+// C1RX triggers when data is received on the CAN bus
+#int_c1rx
+void isr_c1rx(void)
+{
+    struct rx_stat rxstat;
+    int32 rx_id;
+    int in_data[8];
+    int8 rx_len;
+    
+    if (can_getd(rx_id, in_data, rx_len, rxstat))
+    {
+        // Data was received, raise a flag corresponding to the data received
+        switch(rx_id)
+        {
+            case COMMAND_ENABLE_BALANCING_ID:
+                gb_balance_enable = true;
+                break;
+            case COMMAND_PMS_DISCONNECT_ARRAY_ID:
+                gb_pms_response_received = true;
+                break;
+            default:
+                break;
+        }
+    }
+}
+
 void safety_check_state(void)
 {
     int1 b_success = true;
@@ -599,46 +626,20 @@ void safety_check_state(void)
     if (b_success == true)
     {
         // All parameters within safe range, balance the cells
-        g_state = BALANCE_PENDING;
+        if (gb_balance_enable == true)
+        {
+            gb_balance_enable = false;
+            g_state = BALANCING;
+        }
+        else
+        {
+            g_state = SAFETY_CHECK;
+        }
     }
     else
     {
         // Something went wrong, disconnect the array
         g_state = SEND_ARRAY_DISCONNECT;
-    }
-}
-
-void balance_pending_state(void)
-{
-    static int timeout_ms = 0;
-    struct rx_stat rxstat;
-    int32 rx_id;
-    int in_data[8];
-    int8 rx_len;
-    
-    if (timeout_ms >= BALANCING_TIMEOUT_MS)
-    {
-        // Response timed out, proceed to disconnect pack
-        g_state = SAFETY_CHECK;
-    }
-    else if (kbhit())
-    {
-        if (can_getd(rx_id, in_data, rx_len, rxstat))
-        {
-            if (rx_id == 0x40B)
-            {
-                // Response received from PMS, disconnect the pack
-                timeout_ms = 0;
-                g_state = BALANCING;
-            }
-        }
-    }
-    else
-    {
-        // No timeout, no CAN packet, increment timeout counter
-        delay_ms(1);
-        timeout_ms++;
-        g_state = BALANCE_PENDING;
     }
 }
 
@@ -659,27 +660,18 @@ void send_array_disconnect_state(void)
 void pms_response_pending_state(void)
 {
     static int timeout_ms = 0;
-    struct rx_stat rxstat;
-    int32 rx_id;
-    int in_data[8];
-    int8 rx_len;
     
     if (timeout_ms >= PMS_RESPONSE_TIMEOUT_MS)
     {
         // Response timed out, proceed to disconnect pack
         g_state = DISCONNECT_PACK;
     }
-    else if (kbhit())
+    else if (gb_pms_response_received == true)
     {
-        if (can_getd(rx_id, in_data, rx_len, rxstat))
-        {
-            if (rx_id == COMMAND_PMS_DISCONNECT_ARRAY_ID)
-            {
-                // Response received from PMS, disconnect the pack
-                timeout_ms = 0;
-                g_state = DISCONNECT_PACK;
-            }
-        }
+        // Response received from PMS, disconnect the pack
+        timeout_ms = 0;
+        gb_pms_response_received = false;
+        g_state = DISCONNECT_PACK;
     }
     else
     {
@@ -716,6 +708,9 @@ void main()
     // Set up and enable timer 4 with a period of 1ms
     setup_timer4(TMR_INTERNAL|TMR_DIV_BY_256,39);
     enable_interrupts(INT_TIMER4);
+    
+    // Enable CAN receive interrupt
+    enable_interrupts(INT_C1RX);
     
     main_init();
     ltc6804_init();
@@ -771,9 +766,6 @@ void main()
         {
             case SAFETY_CHECK:
                 safety_check_state();
-                break;
-            case BALANCE_PENDING:
-                balance_pending_state();
                 break;
             case BALANCING:
                 balancing_state();

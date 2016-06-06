@@ -53,13 +53,12 @@
 #define FAN_PIN   PIN_D7  // Fan PWM signal
 
 // State machine states
-enum
+typedef enum
 {
     SAFETY_CHECK,
-    BALANCE_PENDING,
     BALANCING,
     SEND_ARRAY_DISCONNECT,
     PMS_RESPONSE_PENDING,
     DISCONNECT_PACK,
     N_STATES
-};
+} bps_state;
