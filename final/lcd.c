@@ -14,7 +14,7 @@
 #define LCD_BUSY_DELAY 5 // time spent waiting while the lcd is busy
 
 // LCD pin should be debounced when connected
-#define LCD_DEBOUNCE_MS 1000
+#define LCD_DEBOUNCE_MS 20
 
 static int g_data_pin[4] = {D4_PIN, D5_PIN, D6_PIN, D7_PIN};
 static int g_row_address[4] = {0x00, 0x40, 0x14, 0x54};
