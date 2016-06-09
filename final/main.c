@@ -566,29 +566,12 @@ void safety_check_state(void)
 void begin_balance_state(void)
 {
     int i;
-    int min_idx = get_lowest_voltage_cell_index();
-
-    /*for (i = 0 ; i < 3 ; i++)
-    {
-        if ((g_cell[i].average_voltage - g_cell[min_idx].average_voltage)
-            > BALANCE_THRESHOLD)
-        {
-            g_discharge1 |= 1 << i;
-        }
-        else
-        {
-            g_discharge1 &= ~(1 << i);
-        }
-    }
     
-    // hardcoded to 0 for safety
-    g_discharge1 = 0x000;
-    g_discharge2 = 0x000;
-    g_discharge3 = 0x000;*/
+    // NOTE: currently the first 3 cells have PMOSes on them
     
     for (i = 0 ; i < 12 ; i++)
     {
-        if ((g_cell[i].average_voltage - g_cell[min_idx].average_voltage)
+        if ((g_cell[i].average_voltage - g_cell[g_lowest_voltage_cell_index].average_voltage)
             > BALANCE_THRESHOLD)
         {
             g_discharge1 |= 1 << i;
@@ -601,7 +584,7 @@ void begin_balance_state(void)
 
     for (i = 12 ; i < 24 ; i++)
     {
-        if ((g_cell[i].average_voltage - g_cell[min_idx].average_voltage)
+        if ((g_cell[i].average_voltage - g_cell[g_lowest_voltage_cell_index].average_voltage)
             > BALANCE_THRESHOLD)
         {
             g_discharge2 |= 1 << (i - 12);
@@ -614,7 +597,7 @@ void begin_balance_state(void)
     
     for (i = 24 ; i < 30 ; i++)
     {
-        if ((g_cell[i].average_voltage - g_cell[min_idx].average_voltage)
+        if ((g_cell[i].average_voltage - g_cell[g_lowest_voltage_cell_index].average_voltage)
             > BALANCE_THRESHOLD)
         {
             g_discharge3 |= 1 << (i - 24);
@@ -624,7 +607,8 @@ void begin_balance_state(void)
             g_discharge3 &= ~(1 << (i - 24));
         }
     }
-
+    
+    // Do not discharge for safety reasons
     /*output_low(CSBI1);
     ltc6804_write_config(g_discharge1);
     output_high(CSBI1);
