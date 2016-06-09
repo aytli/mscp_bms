@@ -213,89 +213,6 @@ void disable_balancing(void)
     output_high(CSBI3);
 }
 
-// Discharge all the cells that are 1% of the SoC range voltage higher than
-// the lowest voltage
-void balance(void)
-{
-    int i;
-    int min_idx = get_lowest_voltage_cell_index();
-
-    /*for (i = 0 ; i < 3 ; i++)
-    {
-        if ((g_cell[i].average_voltage - g_cell[min_idx].average_voltage)
-            > BALANCE_THRESHOLD)
-        {
-            g_discharge1 |= 1 << i;
-        }
-        else
-        {
-            g_discharge1 &= ~(1 << i);
-        }
-    }
-    
-    // hardcoded to 0 for safety
-    g_discharge1 = 0x000;
-    g_discharge2 = 0x000;
-    g_discharge3 = 0x000;*/
-    
-    for (i = 0 ; i < 12 ; i++)
-    {
-        if ((g_cell[i].average_voltage - g_cell[min_idx].average_voltage)
-            > BALANCE_THRESHOLD)
-        {
-            g_discharge1 |= 1 << i;
-        }
-        else
-        {
-            g_discharge1 &= ~(1 << i);
-        }
-    }
-
-    for (i = 12 ; i < 24 ; i++)
-    {
-        if ((g_cell[i].average_voltage - g_cell[min_idx].average_voltage)
-            > BALANCE_THRESHOLD)
-        {
-            g_discharge2 |= 1 << (i - 12);
-        }
-        else
-        {
-            g_discharge2 &= ~(1 << (i - 12));
-        }
-    }
-    
-    for (i = 24 ; i < 30 ; i++)
-    {
-        if ((g_cell[i].average_voltage - g_cell[min_idx].average_voltage)
-            > BALANCE_THRESHOLD)
-        {
-            g_discharge3 |= 1 << (i - 24);
-        }
-        else
-        {
-            g_discharge3 &= ~(1 << (i - 24));
-        }
-    }
-
-    /*output_low(CSBI1);
-    ltc6804_write_config(g_discharge1);
-    output_high(CSBI1);
-    output_low(CSBI2);
-    ltc6804_write_config(g_discharge2);
-    output_high(CSBI2);
-    output_low(CSBI3);
-    ltc6804_write_config(g_discharge3);
-    output_high(CSBI3);*/
-    
-    // TODO: Figure out why interrupts will not run during a delay
-    for (i = 0 ; i < BALANCE_PERIOD_MS ; i++)
-    {
-        delay_ms(1);
-    }
-    
-    disable_balancing();
-}
-
 void average_voltage(void)
 {
     int i;
@@ -625,14 +542,15 @@ void safety_check_state(void)
     
     if (b_success == true)
     {
-        // All parameters within safe range, balance the cells
         if (gb_balance_enable == true)
         {
+            // All parameters within safe range, balance the cells
             gb_balance_enable = false;
-            g_state = BALANCING;
+            g_state = BEGIN_BALANCE;
         }
         else
         {
+            // Balancing disabled, continue monitoring cell status
             g_state = SAFETY_CHECK;
         }
     }
@@ -643,11 +561,99 @@ void safety_check_state(void)
     }
 }
 
+void begin_balance_state(void)
+{
+    int i;
+    int min_idx = get_lowest_voltage_cell_index();
+
+    /*for (i = 0 ; i < 3 ; i++)
+    {
+        if ((g_cell[i].average_voltage - g_cell[min_idx].average_voltage)
+            > BALANCE_THRESHOLD)
+        {
+            g_discharge1 |= 1 << i;
+        }
+        else
+        {
+            g_discharge1 &= ~(1 << i);
+        }
+    }
+    
+    // hardcoded to 0 for safety
+    g_discharge1 = 0x000;
+    g_discharge2 = 0x000;
+    g_discharge3 = 0x000;*/
+    
+    for (i = 0 ; i < 12 ; i++)
+    {
+        if ((g_cell[i].average_voltage - g_cell[min_idx].average_voltage)
+            > BALANCE_THRESHOLD)
+        {
+            g_discharge1 |= 1 << i;
+        }
+        else
+        {
+            g_discharge1 &= ~(1 << i);
+        }
+    }
+
+    for (i = 12 ; i < 24 ; i++)
+    {
+        if ((g_cell[i].average_voltage - g_cell[min_idx].average_voltage)
+            > BALANCE_THRESHOLD)
+        {
+            g_discharge2 |= 1 << (i - 12);
+        }
+        else
+        {
+            g_discharge2 &= ~(1 << (i - 12));
+        }
+    }
+    
+    for (i = 24 ; i < 30 ; i++)
+    {
+        if ((g_cell[i].average_voltage - g_cell[min_idx].average_voltage)
+            > BALANCE_THRESHOLD)
+        {
+            g_discharge3 |= 1 << (i - 24);
+        }
+        else
+        {
+            g_discharge3 &= ~(1 << (i - 24));
+        }
+    }
+
+    /*output_low(CSBI1);
+    ltc6804_write_config(g_discharge1);
+    output_high(CSBI1);
+    output_low(CSBI2);
+    ltc6804_write_config(g_discharge2);
+    output_high(CSBI2);
+    output_low(CSBI3);
+    ltc6804_write_config(g_discharge3);
+    output_high(CSBI3);*/
+    
+    g_state = BALANCING;
+}
+
 void balancing_state(void)
 {
-    // Balance the cells, continue safety checks
-    balance();
-    g_state = SAFETY_CHECK;
+    static int balance_time_ms = 0;
+    
+    if (balance_time_ms >= BALANCE_PERIOD_MS)
+    {
+        // Balancing period over, disable balancing
+        balance_time_ms = 0;
+        disable_balancing();
+        g_state = SAFETY_CHECK;
+    }
+    else
+    {
+        // Continue balancing
+        delay_ms(1);
+        balance_time_ms++;
+        g_state = BALANCING;
+    }
 }
 
 void send_array_disconnect_state(void)
@@ -767,6 +773,8 @@ void main()
             case SAFETY_CHECK:
                 safety_check_state();
                 break;
+            case BEGIN_BALANCE:
+                begin_balance_state();
             case BALANCING:
                 balancing_state();
                 break;
