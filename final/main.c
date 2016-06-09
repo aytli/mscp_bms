@@ -556,8 +556,10 @@ void safety_check_state(void)
     }
     else
     {
-        // Something went wrong, disconnect the array
-        g_state = SEND_ARRAY_DISCONNECT;
+        // Something went wrong, signal PMS to disconnect the array
+        // Wait for repsonse
+        can_putd(COMMAND_PMS_DISCONNECT_ARRAY_ID,0,0,TX_PRI,TX_EXT,TX_RTR);
+        g_state = PMS_RESPONSE_PENDING;
     }
 }
 
@@ -654,13 +656,6 @@ void balancing_state(void)
         balance_time_ms++;
         g_state = BALANCING;
     }
-}
-
-void send_array_disconnect_state(void)
-{
-    // Signal the PMS to disconnect the array, wait for response
-    can_putd(COMMAND_PMS_DISCONNECT_ARRAY_ID,0,0,TX_PRI,TX_EXT,TX_RTR);
-    g_state = PMS_RESPONSE_PENDING;
 }
 
 void pms_response_pending_state(void)
@@ -777,9 +772,6 @@ void main()
                 begin_balance_state();
             case BALANCING:
                 balancing_state();
-                break;
-            case SEND_ARRAY_DISCONNECT:
-                send_array_disconnect_state();
                 break;
             case PMS_RESPONSE_PENDING:
                 pms_response_pending_state();
