@@ -112,7 +112,7 @@ static float          g_highest_temperature;
 static int1           gb_connected;
 static int1           gb_balance_enable;
 static int1           gb_pms_response_received;
-static bps_state      g_state;
+static bps_state_t    g_state;
 
 // Initializes the cells, clears all flags, resets highest and lowest cells
 void main_init(void)

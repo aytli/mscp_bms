@@ -61,4 +61,4 @@ typedef enum
     PMS_RESPONSE_PENDING,
     DISCONNECT_PACK,
     N_STATES
-} bps_state;
+} bps_state_t;
