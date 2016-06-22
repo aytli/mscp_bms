@@ -12,7 +12,7 @@
 #use delay(crystal = 20000000)
 
 // UART port (PIC24HJ256GP610A)
-#use rs232(baud = 57600, xmit = PIN_F2, rcv = PIN_F3)
+#use rs232(baud = 115200, xmit = PIN_F2, rcv = PIN_F3)
 
 // SPI port 1: LTC6804-1
 #use spi(SPI1, BAUD = 125000, IDLE = 1, SAMPLE_RISE)
