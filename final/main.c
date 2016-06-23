@@ -102,9 +102,9 @@ static int * gp_can_data_address[N_CAN_ID] =
 static cell_t         g_cell[N_CELLS];
 static temperature_t  g_temperature[N_ADC_CHANNELS];
 static current_t      g_current;
-static int            g_highest_voltage_cell_index;
-static int            g_lowest_voltage_cell_index;
-static int            g_highest_temperature_cell_index;
+static int8           g_highest_voltage_cell_index;
+static int8           g_lowest_voltage_cell_index;
+static int8           g_highest_temperature_cell_index;
 static unsigned int16 g_highest_voltage;
 static unsigned int16 g_lowest_voltage;
 static float          g_highest_temperature;
