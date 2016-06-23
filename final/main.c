@@ -433,9 +433,6 @@ void display_errors(void)
     lcd_write("CURRENT: ");
     itoa(errors[3],10,str);
     lcd_write(str);
-    
-    // Clear the eeprom after errors are read
-    eeprom_clear();
 }
 
 // Timer 2 blinks heartbeat LED, checks for status of LCD
@@ -670,6 +667,7 @@ void pms_response_pending_state(void)
 void disconnect_pack_state(void)
 {
     delay_ms(MPPT_DELAY_MS);
+    eeprom_write_errors();
     KILOVAC_OFF;
 }
 
@@ -701,6 +699,7 @@ void main()
     ltc6804_init();
     ads7952_init();
     hall_sensor_init();
+    eeprom_clear_flags();
     fan_init();
     fan_set_speed(FAN_LOW);
     
@@ -736,6 +735,7 @@ void main()
     {
         // Voltage, temperature, and current are all safe, connect the pack
         delay_ms(500);
+        eeprom_clear_memory();
         KILOVAC_ON;
     }
     else

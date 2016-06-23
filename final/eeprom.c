@@ -70,13 +70,28 @@ void eeprom_read(int8 * data)
     output_high(WP_PIN);
 }
 
-void eeprom_clear(void)
+void eeprom_clear_memory(void)
+{
+    // Write the error code
+    output_low(WP_PIN);
+    i2c_start();
+    i2c_write(DEVICE_ADDRESS|I2C_WRITE_BIT);
+    i2c_write(BASE_ADDRESS);
+    i2c_write(EEPROM_SUCCESS);              // Byte 0 - OV error
+    i2c_write(EEPROM_SUCCESS);              // Byte 1 - UV error
+    i2c_write(EEPROM_SUCCESS);              // Byte 2 - OT error
+    i2c_write((int8)(EEPROM_SUCCESS)); // Byte 3 - Current error
+    i2c_stop();
+    output_high(WP_PIN);
+    delay_ms(WRITE_TIME_MS);
+}
+
+void eeprom_clear_flags(void)
 {
     g_ov_error      = EEPROM_SUCCESS;
     g_uv_error      = EEPROM_SUCCESS;
     g_ot_error      = EEPROM_SUCCESS;
     g_current_error = EEPROM_SUCCESS;
-    eeprom_write_errors();
 }
 
 void eeprom_set_ov_error(int8 id)
