@@ -111,6 +111,8 @@ static float          g_highest_temperature;
 static int1           gb_connected;
 static int1           gb_balance_enable;
 static int1           gb_pms_response_received;
+static int1           gb_motor_connected;
+static int1           gb_mppt_connected;
 static bps_state_t    g_state;
 
 // Initializes the cells, clears all flags, resets highest and lowest cells
@@ -356,7 +358,7 @@ int1 check_temperature(void)
     {
         // temperature charge protection
         // disable charging
-        //if (motor controller and mppt are connected)
+        //if ((gb_motor_connected == true) && (gb_mppt_connected == true))
         if (true)
         {
             //turn off array, tell motor controller to disable regen
@@ -519,6 +521,16 @@ void isr_c1rx(void)
                 break;
             case COMMAND_PMS_DISCONNECT_ARRAY_ID:
                 gb_pms_response_received = true;
+                break;
+            case COMMAND_EVDC_DRIVE_ID:
+                gb_motor_connected = true;
+                break;
+            // If any of the MPPTs respond, raise the flag
+            case RESPONSE_MPPT1_ID:
+            case RESPONSE_MPPT2_ID:
+            case RESPONSE_MPPT3_ID:
+            case RESPONSE_MPPT4_ID:
+                gb_mppt_connected = true;
                 break;
             default:
                 break;

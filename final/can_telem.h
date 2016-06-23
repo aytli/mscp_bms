@@ -68,11 +68,16 @@ enum {TELEM_ID_TABLE(EXPAND_AS_TELEM_LEN_ENUM)};
 #define EXPAND_AS_COMMAND_ID_ENUM(a,b)  a##_ID  = b,
 
 // X macro table of CANbus commands
-//        Packet name             ,    ID
-#define CAN_COMMAND_TABLE(ENTRY)               \
-    ENTRY(COMMAND_PMS_DISCONNECT_ARRAY, 0x777) \
-    ENTRY(COMMAND_ENABLE_BALANCING,     0x888)
-#define N_CAN_COMMAND 1
+//        Packet name                  ,    ID
+#define CAN_COMMAND_TABLE(ENTRY)                \
+    ENTRY(COMMAND_PMS_DISCONNECT_ARRAY , 0x777) \
+    ENTRY(COMMAND_ENABLE_BALANCING     , 0x888) \
+    ENTRY(COMMAND_EVDC_DRIVE           , 0x501) \
+    ENTRY(RESPONSE_MPPT1               , 0x771) \
+    ENTRY(RESPONSE_MPPT2               , 0x772) \
+    ENTRY(RESPONSE_MPPT3               , 0x773) \
+    ENTRY(RESPONSE_MPPT4               , 0x774)
+#define N_CAN_COMMAND 2
 
 enum {CAN_COMMAND_TABLE(EXPAND_AS_COMMAND_ID_ENUM)};
 
