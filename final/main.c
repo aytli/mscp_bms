@@ -10,7 +10,6 @@
 #include "pec.c"
 #include "ltc6804.c"
 #include "adc.c"
-#include "fan.c"
 #include "lcd.c"
 #include "hall_sensor.c"
 #include "eeprom.c"
@@ -350,7 +349,6 @@ int1 check_temperature(void)
     {
         // temperature discharge protection
         // shut off pack, write OT error and cell id to eeprom
-        fan_set_speed(FAN_MAX);
         eeprom_set_ot_error((int8)(g_highest_temperature_cell_index));
         return 0;
     }
@@ -362,7 +360,6 @@ int1 check_temperature(void)
         if (true)
         {
             //turn off array, tell motor controller to disable regen
-            fan_set_speed(FAN_HIGH);
             eeprom_set_ot_error((int8)(g_highest_temperature_cell_index));
             return 0;
         }
@@ -675,11 +672,6 @@ void disconnect_pack_state(void)
 void main()
 {
     int i;
-    struct rx_stat rxstat;
-    int32 rx_id;
-    int in_data[8];
-    int8 rx_len;
-    int8 timeout_ms;
     
     // Kilovac is initially disabled
     KILOVAC_OFF;
@@ -700,8 +692,7 @@ void main()
     ads7952_init();
     hall_sensor_init();
     eeprom_clear_flags();
-    fan_init();
-    fan_set_speed(FAN_LOW);
+    output_high(FAN_PIN); // Turn on the fan
     
     // Initialize CANbus, configure outputs, enable transfer buffers
     can_init();
