@@ -724,8 +724,8 @@ void main()
     // Perform startup test
     if ((check_voltage() & check_temperature() & check_current()) == true)
     {
-        // Voltage, temperature, and current are all safe, connect the pack
-        delay_ms(500);
+        // Voltage, temperature, and current are all safe
+        // Clear the eeprom and connect the pack
         eeprom_clear_memory();
         KILOVAC_ON;
     }
@@ -745,6 +745,7 @@ void main()
                 break;
             case BEGIN_BALANCE:
                 begin_balance_state();
+                break;
             case BALANCING:
                 balancing_state();
                 break;
