@@ -105,9 +105,6 @@ static int * gp_can_data_address[N_CAN_ID] =
 static cell_t         g_cell[N_CELLS];
 static temperature_t  g_temperature[N_ADC_CHANNELS];
 static current_t      g_current;
-static int8           g_highest_temperature_cell_index;
-static unsigned int16 g_highest_voltage;
-static unsigned int16 g_lowest_voltage;
 static int1           gb_connected;
 static int1           gb_balance_enable;
 static int1           gb_pms_response_received;
@@ -126,8 +123,6 @@ void main_init(void)
         g_cell[i].uv_count = 0;
     }
     g_current.average = 0;
-    g_highest_voltage = 0;
-    g_lowest_voltage = 0;
     gb_connected = false;
     g_state = SAFETY_CHECK;
 }
