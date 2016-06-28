@@ -108,7 +108,6 @@ static current_t      g_current;
 static int8           g_highest_temperature_cell_index;
 static unsigned int16 g_highest_voltage;
 static unsigned int16 g_lowest_voltage;
-static float          g_highest_temperature;
 static int1           gb_connected;
 static int1           gb_balance_enable;
 static int1           gb_pms_response_received;
@@ -127,10 +126,8 @@ void main_init(void)
         g_cell[i].uv_count = 0;
     }
     g_current.average = 0;
-    g_highest_temperature_cell_index = 0;
     g_highest_voltage = 0;
     g_lowest_voltage = 0;
-    g_highest_temperature = 0;
     gb_connected = false;
     g_state = SAFETY_CHECK;
 }
@@ -148,20 +145,6 @@ int get_lowest_voltage_cell_index(void)
         }
     }
     return lowest;
-}
-
-int get_highest_temperature_cell_index(void)
-{
-    int i;
-    int highest = 0;
-    for (i = 0 ; i < N_ADC_CHANNELS ; i++)
-    {
-        if (g_temperature[i].average >= g_temperature[highest].average)
-        {
-            highest = i;
-        }
-    }
-    return highest;
 }
 
 // Use the simplified Steinhart-Hart equation to approximate temperatures
@@ -346,41 +329,56 @@ int1 check_voltage(void)
 
 int1 check_temperature(void)
 {
+    int i;
+    
     // Find highest temperature reading
     ads7952_read_all_channels(g_temperature);
     average_temperature();
     convert_adc_data_to_temps();
-    g_highest_temperature_cell_index = get_highest_temperature_cell_index();
-    g_highest_temperature = g_temperature[g_highest_temperature_cell_index].converted;
     
-    if (g_highest_temperature >= TEMP_CRITICAL)
+    for (i = 0 ; i < N_ADC_CHANNELS ; i++)
     {
-        // temperature discharge protection
-        // shut off pack, write OT error and cell id to eeprom
-        eeprom_set_ot_error((int8)(g_highest_temperature_cell_index));
-        return 0;
-    }
-    else if (g_highest_temperature >= TEMP_WARNING)
-    {
-        // temperature charge protection
-        // disable charging
-        //if ((gb_motor_connected == true) && (gb_mppt_connected == true))
-        if (true)
+        if (g_temperature[i].converted >= TEMP_CRITICAL)
         {
-            //turn off array, tell motor controller to disable regen
-            eeprom_set_ot_error((int8)(g_highest_temperature_cell_index));
+            // Temperature is critical, increment the OT count
+            g_temperature[i].ot_count++;
+        }
+        else if ((g_temperature[i].converted >= TEMP_WARNING)
+                  && (gb_motor_connected == true) && (gb_mppt_connected == true))
+        {
+            // Temperature is above the warning threshold
+            // Motor and MPPT are connected
+            // Increment the temperature warning count
+            g_temperature[i].wt_count++;
+        }
+        else
+        {
+            // Temperature is within the safe range, clear the OT count
+            g_temperature[i].ot_count = 0;
+            g_temperature[i].wt_count = 0;
+        }
+        
+        if (g_temperature[i].ot_count >= N_BAD_SAMPLES)
+        {
+            // Too many OT errors, write OT error to eeprom and return false
+            eeprom_set_ot_error(i);
+            return 0;
+        }
+        else if (g_temperature[i].wt_count >= N_BAD_SAMPLES)
+        {
+            // Too many temperature warning errors
+            // TODO: SIGNAL THE PMS TO TURN OFF ARRAY, DISABLE REGEN, WAIT FOR PMS RESPONSE
+            eeprom_set_ot_error(i);
             return 0;
         }
         else
         {
-            return 1;
+            // The temperature is within the safe range, continue checking
         }
     }
-    else
-    {
-        // cell temperatures are fine
-        return 1;
-    }
+    
+    // All temperature values are within the safe range, return true
+    return 1;
 }
 
 int1 check_current(void)

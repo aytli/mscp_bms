@@ -17,6 +17,8 @@ typedef struct
     unsigned int16 samples[N_TEMPERATURE_SAMPLES];
     unsigned int16 average;
     float          converted;
+    unsigned int8  ot_count; // Critical temperature error counter
+    unsigned int8  wt_count; // Temperature warning counter
 } temperature_t;
 
 // ADC channels on PCB are not mapped in order
