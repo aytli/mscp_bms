@@ -24,7 +24,7 @@
     ENTRY(CAN_BPS_VOLTAGE5       , 0x604,  8, g_bps_voltage_page+32)     \
     ENTRY(CAN_BPS_VOLTAGE6       , 0x605,  8, g_bps_voltage_page+40)     \
     ENTRY(CAN_BPS_VOLTAGE7       , 0x606,  8, g_bps_voltage_page+48)     \
-    ENTRY(CAN_BPS_VOLTAGE8       , 0x607,  4, g_bps_voltage_page+52)     \
+    ENTRY(CAN_BPS_VOLTAGE8       , 0x607,  4, g_bps_voltage_page+56)     \
     ENTRY(CAN_BPS_TEMPERATURE1   , 0x608,  8, g_bps_temperature_page)    \
     ENTRY(CAN_BPS_TEMPERATURE2   , 0x609,  8, g_bps_temperature_page+8)  \
     ENTRY(CAN_BPS_TEMPERATURE3   , 0x60A,  8, g_bps_temperature_page+16) \
