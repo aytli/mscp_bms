@@ -70,6 +70,9 @@
 // MPPT turn off time
 #define MPPT_DELAY_MS 10
 
+// Number of bad data samples required to trip
+#define N_BAD_SAMPLES 10
+
 // CAN bus defines
 #define TX_PRI 3
 #define TX_EXT 0
@@ -102,8 +105,6 @@ static int * gp_can_data_address[N_CAN_ID] =
 static cell_t         g_cell[N_CELLS];
 static temperature_t  g_temperature[N_ADC_CHANNELS];
 static current_t      g_current;
-static int8           g_highest_voltage_cell_index;
-static int8           g_lowest_voltage_cell_index;
 static int8           g_highest_temperature_cell_index;
 static unsigned int16 g_highest_voltage;
 static unsigned int16 g_lowest_voltage;
@@ -121,32 +122,17 @@ void main_init(void)
     int i;
     for (i = 0 ; i < N_CELLS ; i++)
     {
-        g_cell[i].voltage = 0;
+        g_cell[i].voltage  = 0;
+        g_cell[i].ov_count = 0;
+        g_cell[i].uv_count = 0;
     }
     g_current.average = 0;
-    g_highest_voltage_cell_index = 0;
-    g_lowest_voltage_cell_index = 0;
     g_highest_temperature_cell_index = 0;
     g_highest_voltage = 0;
     g_lowest_voltage = 0;
     g_highest_temperature = 0;
     gb_connected = false;
     g_state = SAFETY_CHECK;
-}
-
-// Returns the index for the highest voltage cell
-int get_highest_voltage_cell_index(void)
-{
-    int i;
-    int highest = 0;
-    for (i = 0 ; i < N_CELLS ; i++)
-    {
-        if (g_cell[i].voltage >= g_cell[highest].average_voltage)
-        {
-            highest = i;
-        }
-    }
-    return highest;
 }
 
 // Returns the index for the lowest voltage cell
@@ -269,7 +255,7 @@ void average_current(void)
 void update_voltage_data(void)
 {
     int i;
-    for (i = 0 ; i < N_CELLS ; i ++)
+    for (i = 0 ; i < N_CELLS ; i++)
     {
         g_bps_voltage_page[2*i]   = (int8)(g_cell[i].average_voltage >> 8);
         g_bps_voltage_page[2*i+1] = (int8)(g_cell[i].average_voltage & 0x00FF);
@@ -309,33 +295,53 @@ void update_pack_status(void)
 
 int1 check_voltage(void)
 {
-    // Find highest and lowest cell voltages
+    int i;
+    
+    // Read the cell voltages, compute a moving average of each cell voltage
     ltc6804_read_cell_voltages(g_cell);
     average_voltage();
-    g_highest_voltage_cell_index = get_highest_voltage_cell_index();
-    g_lowest_voltage_cell_index = get_lowest_voltage_cell_index();
-    g_highest_voltage = g_cell[g_highest_voltage_cell_index].average_voltage;
-    g_lowest_voltage = g_cell[g_lowest_voltage_cell_index].average_voltage;
     
-    if (g_highest_voltage >= VOLTAGE_MAX)
+    for (i = 0 ; i < N_CELLS ; i++)
     {
-        // over voltage protection
-        // shut off pack and write OV error and cell id to eeprom
-        eeprom_set_ov_error((int8)(g_highest_voltage_cell_index));
-        return 0;
+        if (g_cell[i].voltage >= VOLTAGE_MAX)
+        {
+            // Voltage is too high, increment the OV count
+            g_cell[i].ov_count++;
+        }
+        else if (g_cell[i].voltage <= VOLTAGE_MIN)
+        {
+            // Voltage is too low, increment the UV count
+            g_cell[i].uv_count++;
+        }
+        else
+        {
+            // Voltage is within the safe operating range, clear OV and UV counts
+            g_cell[i].ov_count = 0;
+            g_cell[i].uv_count = 0;
+        }
+        
+        if (g_cell[i].ov_count >= N_BAD_SAMPLES)
+        {
+            // Too many OV errors, write OV error to eeprom and return false
+            eeprom_set_ov_error(i);
+            output_high(STATUS);
+            return 0;
+        }
+        else if (g_cell[i].uv_count >= N_BAD_SAMPLES)
+        {
+            // Too many UV errors, write UV error to eeprom and return false
+            eeprom_set_uv_error(i);
+            output_high(STATUS);
+            return 0;
+        }
+        else
+        {
+            // The voltage is within the safe range, continue checking cells
+        }
     }
-    else if (g_lowest_voltage <= VOLTAGE_MIN)
-    {
-        // under voltage protection
-        // shut off pack and write UV error and cell if to eeprom
-        eeprom_set_uv_error((int8)(g_lowest_voltage_cell_index));
-        return 0;
-    }
-    else
-    {
-        // cell voltages are fine
-        return 1;
-    }
+    
+    // All cells are within the safe range, return true
+    return 1;
 }
 
 int1 check_temperature(void)
@@ -382,6 +388,8 @@ int1 check_current(void)
     // Read the pack current
     g_current.raw = hall_sensor_read_data();
     average_current();
+    
+    return 1;
     
     if (g_current.average >= CURRENT_DISCHARGE_LIMIT)
     {
@@ -563,7 +571,7 @@ void safety_check_state(void)
     else
     {
         // Something went wrong, signal PMS to disconnect the array
-        // Wait for repsonse
+        // Wait for response
         can_putd(COMMAND_PMS_DISCONNECT_ARRAY_ID,0,0,TX_PRI,TX_EXT,TX_RTR);
         g_state = PMS_RESPONSE_PENDING;
     }
@@ -572,12 +580,11 @@ void safety_check_state(void)
 void begin_balance_state(void)
 {
     int i;
-    
-    // NOTE: currently the first 3 cells have PMOSes on them
+    int lowest = get_lowest_voltage_cell_index();
     
     for (i = 0 ; i < 12 ; i++)
     {
-        if ((g_cell[i].average_voltage - g_cell[g_lowest_voltage_cell_index].average_voltage)
+        if ((g_cell[i].average_voltage - g_cell[lowest].average_voltage)
             > BALANCE_THRESHOLD)
         {
             g_discharge1 |= 1 << i;
@@ -590,7 +597,7 @@ void begin_balance_state(void)
 
     for (i = 12 ; i < 24 ; i++)
     {
-        if ((g_cell[i].average_voltage - g_cell[g_lowest_voltage_cell_index].average_voltage)
+        if ((g_cell[i].average_voltage - g_cell[lowest].average_voltage)
             > BALANCE_THRESHOLD)
         {
             g_discharge2 |= 1 << (i - 12);
@@ -603,7 +610,7 @@ void begin_balance_state(void)
     
     for (i = 24 ; i < 30 ; i++)
     {
-        if ((g_cell[i].average_voltage - g_cell[g_lowest_voltage_cell_index].average_voltage)
+        if ((g_cell[i].average_voltage - g_cell[lowest].average_voltage)
             > BALANCE_THRESHOLD)
         {
             g_discharge3 |= 1 << (i - 24);

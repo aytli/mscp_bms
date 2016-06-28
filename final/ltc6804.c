@@ -67,6 +67,8 @@ typedef struct
     unsigned int16 voltage; // LTC6804 has a 16 bit voltage ADC
     unsigned int16 average_voltage;
     unsigned int16 samples[N_VOLTAGE_SAMPLES];
+    unsigned int16 ov_count;
+    unsigned int16 uv_count;
 } cell_t;
 
 // Function prototypes
