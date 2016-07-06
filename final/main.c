@@ -353,10 +353,10 @@ int1 check_temperature(void)
         }
         else if (g_temperature[i].wt_count >= N_BAD_SAMPLES)
         {
-            // Too many temperature warning errors, write OT error to eeprom and return false
-            // TODO: SIGNAL THE PMS TO TURN OFF ARRAY, DISABLE REGEN, WAIT FOR PMS RESPONSE
-            eeprom_set_ot_error(i);
-            return 0;
+            // Too many temperature warning errors
+            // PMS will monitor BPS temperature data over CAN bus and control
+            // the MPPT relay accordingly
+            return 1;
         }
         else
         {
