@@ -340,7 +340,7 @@ int1 check_temperature(void)
         }
         else
         {
-            // Temperature is within the safe range, clear the OT count
+            // Temperature is within the safe range, clear the error counts
             g_temperature[i].ot_count = 0;
             g_temperature[i].wt_count = 0;
         }
@@ -353,7 +353,7 @@ int1 check_temperature(void)
         }
         else if (g_temperature[i].wt_count >= N_BAD_SAMPLES)
         {
-            // Too many temperature warning errors
+            // Too many temperature warning errors, write OT error to eeprom and return false
             // TODO: SIGNAL THE PMS TO TURN OFF ARRAY, DISABLE REGEN, WAIT FOR PMS RESPONSE
             eeprom_set_ot_error(i);
             return 0;
