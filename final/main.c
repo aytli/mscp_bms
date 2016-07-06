@@ -119,7 +119,6 @@ void main_init(void)
     
     for (i = 0 ; i < N_CELLS ; i++)
     {
-        g_cell[i].voltage  = 0;
         g_cell[i].ov_count = 0;
         g_cell[i].uv_count = 0;
     }
