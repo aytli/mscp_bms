@@ -44,8 +44,8 @@
 // Protection limits
 #define VOLTAGE_MAX            42000 // 4.20V
 #define VOLTAGE_MIN            27500 // 2.75V
-#define TEMP_WARNING              60 // 60°C, actual value to be determined
-#define TEMP_CRITICAL             70 // 70°C, actual value to be determined
+#define TEMP_WARNING              60 // 60°C charge limit
+#define TEMP_CRITICAL             70 // 70°C discharge limit
 #define DISCHARGE_LIMIT_AMPS      20 // Current discharge limit (exiting the pack)
 #define CHARGE_LIMIT_AMPS         10 // Current charge limit (entering the pack)
 #define CURRENT_DISCHARGE_LIMIT CURRENT_ZERO+(CURRENT_SLOPE*DISCHARGE_LIMIT_AMPS)
