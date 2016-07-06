@@ -460,8 +460,18 @@ void display_errors(void)
     
     lcd_set_cursor_position(3,0);
     lcd_write("CURRENT: ");
-    itoa(errors[3],10,str);
-    lcd_write(str);
+    switch(errors[3])
+    {
+        case OC_ERROR:
+            lcd_write("OC");
+            break;
+        case UC_ERROR:
+            lcd_write("UC");
+            break;
+        default:
+            lcd_write("SUCCESS");
+            break;
+    }
 }
 
 // Timer 2 blinks heartbeat LED, checks for status of LCD
