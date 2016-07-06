@@ -241,14 +241,15 @@ void update_temperature_data(void)
     }
 }
 
-void update_current_data(void)
+void update_cur_bal_stat_data(void)
 {
+    // Current, balancing bits, and pack status are stored in the same CAN packet and telemetry page
+    
+    // Update current data
     g_bps_cur_bal_stat_page[0] = (int8) ((g_current.average>>8)&0xFF);
     g_bps_cur_bal_stat_page[1] = (int8) (g_current.average&0xFF);
-}
-
-void update_balancing_bits(void)
-{
+    
+    // Update balancing bits
     int32 discharge = ((((int32)(g_discharge1))<< 0)&0x00000FFF)
                      |((((int32)(g_discharge2))<<12)&0x00FFF000)
                      |((((int32)(g_discharge3))<<24)&0x3F000000);
@@ -256,10 +257,8 @@ void update_balancing_bits(void)
     g_bps_cur_bal_stat_page[3] = (int8) (((int32)(discharge>> 16))&0xFF);
     g_bps_cur_bal_stat_page[4] = (int8) (((int32)(discharge>>  8))&0xFF);
     g_bps_cur_bal_stat_page[5] = (int8) (((int32)(discharge>>  0))&0xFF);
-}
-
-void update_pack_status(void)
-{
+    
+    // Update the pack status
     g_bps_cur_bal_stat_page[6] = gb_connected;
 }
 
@@ -494,9 +493,7 @@ void isr_timer4(void)
         // Update telemetry data pages
         update_voltage_data();
         update_temperature_data();
-        update_current_data();
-        update_balancing_bits();
-        update_pack_status();
+        update_cur_bal_stat_data();
         
         // Send a packet of CAN data
         CAN_SEND_DATA_PACKET(i);
