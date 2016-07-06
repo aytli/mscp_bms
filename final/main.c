@@ -119,17 +119,21 @@ void main_init(void)
     
     for (i = 0 ; i < N_CELLS ; i++)
     {
-        g_cell[i].ov_count = 0;
-        g_cell[i].uv_count = 0;
+        g_cell[i].average_voltage  = 0;
+        g_cell[i].ov_count         = 0;
+        g_cell[i].uv_count         = 0;
     }
     
     for (i = 0 ; i < N_ADC_CHANNELS ; i++)
     {
+        g_temperature[i].average  = 0;
         g_temperature[i].ot_count = 0;
         g_temperature[i].wt_count = 0;
     }
     
-    g_current.average = 0;
+    g_current.average  = 0;
+    g_current.oc_count = 0;
+    
     gb_connected = false;
     g_state = SAFETY_CHECK;
 }
