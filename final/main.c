@@ -16,20 +16,6 @@
 #include "can_telem.h"
 #include "can_PIC24.c"
 
-// PIC internal register addresses
-#word IFS0 = 0x0084
-#word TRISF = 0x02DE
-
-// Macros to disable timers and clear flags
-#define CLEAR_T2_FLAG IFS0  &= 0xFF7F
-
-// Telemetry packet IDs
-#define VOLTAGE_ID  0x5A
-#define TEMP_ID     0x69
-#define BALANCE_ID  0x41
-#define CURRENT_ID  0xE7
-#define STATUS_ID   0x77
-
 // Kilovac control
 #define KILOVAC_ON        \
     gb_connected = true;  \
