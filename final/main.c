@@ -354,8 +354,7 @@ int1 check_temperature(void)
         else if (g_temperature[i].wt_count >= N_BAD_SAMPLES)
         {
             // Too many temperature warning errors
-            // PMS will monitor BPS temperature data over CAN bus and control
-            // the MPPT relay accordingly
+            // PMS monitors BPS temperatures over CAN bus and controls the MPPT relay accordingly
         }
         else
         {
