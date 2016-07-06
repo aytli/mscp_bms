@@ -46,8 +46,10 @@
 #define VOLTAGE_MIN            27500 // 2.75V
 #define TEMP_WARNING              60 // 60°C, actual value to be determined
 #define TEMP_CRITICAL             70 // 70°C, actual value to be determined
-#define CURRENT_DISCHARGE_LIMIT 3137 // -20A, actual value to be determined
-#define CURRENT_CHARGE_LIMIT    2758 // +10A, actual value to be determined
+#define DISCHARGE_LIMIT_AMPS     -20 // Current discharge limit (exiting the pack)
+#define CHARGE_LIMIT_AMPS         10 // Current charge limit (entering the pack)
+#define CURRENT_DISCHARGE_LIMIT CURRENT_ZERO+CURRENT_SLOPE*DISCHARGE_LIMIT_AMPS
+#define CURRENT_CHARGE_LIMIT    CURRENT_ZERO-CURRENT_SLOPE*CHARGE_LIMIT_AMPS
 
 // Status LED blink period
 #define HEARTBEAT_PERIOD_MS 500
