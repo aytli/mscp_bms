@@ -133,6 +133,7 @@ void main_init(void)
     
     g_current.average  = 0;
     g_current.oc_count = 0;
+    g_current.uc_count = 0;
     
     gb_connected = false;
     g_state = SAFETY_CHECK;
@@ -395,23 +396,38 @@ int1 check_current(void)
     
     return 1;
     
-    if (g_current.average >= CURRENT_DISCHARGE_LIMIT)
+    if (g_current.raw >= CURRENT_DISCHARGE_LIMIT)
     {
-        // discharge current protection
-        // shut off pack, write OC error to eeprom
-        eeprom_set_current_error(OC_ERROR);
-        return 0;
+        // Current is above the allowed discharge limit
+        g_current.oc_count++;
     }
     else if (g_current.average <= CURRENT_CHARGE_LIMIT)
     {
-        // charge current protection
-        // shut off pack, write UC error to eeprom
+        // Current is below the allowed charge limit
+        g_current.uc_count++;
+    }
+    else
+    {
+        // current is fine
+        g_current.oc_count = 0;
+        g_current.uc_count = 0;
+    }
+    
+    if (g_current.oc_count >= N_BAD_SAMPLES)
+    {
+        // Too many overcurrent errors, write OC error to eeprom, return false
+        eeprom_set_current_error(OC_ERROR);
+        return 0;
+    }
+    else if (g_current.uc_count >= N_BAD_SAMPLES)
+    {
+        // Too many undercurrent errors, write UC error to eeprom, return false
         eeprom_set_current_error(UC_ERROR);
         return 0;
     }
     else
     {
-        // current is fine
+        // The current is within the safe range, return true
         return 1;
     }
 }
