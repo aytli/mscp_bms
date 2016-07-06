@@ -333,8 +333,7 @@ int1 check_temperature(void)
         else if ((g_temperature[i].converted >= TEMP_WARNING)
                   && (gb_motor_connected == true) && (gb_mppt_connected == true))
         {
-            // Temperature is above the warning threshold
-            // Motor and MPPT are connected
+            // Temperature is above the warning threshold, motor and MPPT are connected
             // Increment the temperature warning count
             g_temperature[i].wt_count++;
         }
