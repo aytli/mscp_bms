@@ -94,6 +94,7 @@ void main_init(void)
 {
     int i;
     
+    // Resets average voltages and error counts
     for (i = 0 ; i < N_CELLS ; i++)
     {
         g_cell[i].average_voltage  = 0;
@@ -101,6 +102,7 @@ void main_init(void)
         g_cell[i].uv_count         = 0;
     }
     
+    // Resets average temperatures and error counts
     for (i = 0 ; i < N_ADC_CHANNELS ; i++)
     {
         g_temperature[i].average  = 0;
@@ -108,6 +110,7 @@ void main_init(void)
         g_temperature[i].wt_count = 0;
     }
     
+    // Resets average current and error counts
     g_current.average  = 0;
     g_current.oc_count = 0;
     g_current.uc_count = 0;
