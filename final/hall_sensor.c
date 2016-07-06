@@ -4,7 +4,7 @@
 // Practice pack calibration
 //#define CURRENT_CHARGE_MAX    2546  //~+40 A
 //#define CURRENT_DISCHARGE_MAX 1031  //~-80 A
-#define CURRENT_ZERO           3128
+#define CURRENT_ZERO           2055
 #define CURRENT_SLOPE         12.64
 
 #define HALL_ADC_CHANNEL         24
