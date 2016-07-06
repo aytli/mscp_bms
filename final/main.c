@@ -403,7 +403,7 @@ int1 check_current(void)
         // Current is above the allowed discharge limit
         g_current.oc_count++;
     }
-    else if (g_current.average <= CURRENT_CHARGE_LIMIT)
+    else if (g_current.raw <= CURRENT_CHARGE_LIMIT)
     {
         // Current is below the allowed charge limit
         g_current.uc_count++;
