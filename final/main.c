@@ -37,35 +37,24 @@
 #define CURRENT_DISCHARGE_LIMIT CURRENT_ZERO+(CURRENT_SLOPE*DISCHARGE_LIMIT_AMPS)
 #define CURRENT_CHARGE_LIMIT    CURRENT_ZERO-(CURRENT_SLOPE*CHARGE_LIMIT_AMPS)
 
-// Status LED blink period
-#define HEARTBEAT_PERIOD_MS 500
+// Delay periods
+#define HEARTBEAT_PERIOD_MS      500 // Status LED blink period
+#define TELEMETRY_PERIOD_MS      200 // Telemetry data sending period
+#define BALANCE_PERIOD_MS       2000 // Balancing discharge period
+#define PMS_RESPONSE_TIMEOUT_MS 1000 // Timeout period for PMS response
+#define BALANCING_TIMEOUT_MS     500 // Timeout period for the balancing command
+#define MPPT_DELAY_MS             10 // MPPT turn off time
 
-// Telemetry data sending period
-#define TELEMETRY_PERIOD_MS 200
-
-// Balancing discharge period
-#define BALANCE_PERIOD_MS  2000
-
-// Voltage threshold for balancing to occur (BALANCE_THRESHOLD / 10) mV
-#define BALANCE_THRESHOLD   500
-
-// Timeout period for PMS response
-#define PMS_RESPONSE_TIMEOUT_MS 1000
-
-// Timeout period for the balancing command
-#define BALANCING_TIMEOUT_MS 500
-
-// MPPT turn off time
-#define MPPT_DELAY_MS 10
-
-// Number of bad data samples required to trip
-#define N_BAD_SAMPLES 10
+// Misc defines
+#define BALANCE_THRESHOLD        500 // Voltage threshold for balancing to occur (BALANCE_THRESHOLD / 10) mV
+#define N_BAD_SAMPLES             10 // Number of bad data samples required to trip
 
 // CAN bus defines
 #define TX_PRI 3
 #define TX_EXT 0
 #define TX_RTR 0
 
+// Sends a packet of telemetry data over CAN bus
 #define CAN_SEND_DATA_PACKET(i) \
     can_putd(g_can_id[i],gp_can_data_address[i],g_can_len[i],TX_PRI,TX_EXT,TX_RTR)
 
