@@ -524,8 +524,8 @@ void isr_c1rx(void)
 {
     struct rx_stat rxstat;
     int32 rx_id;
-    int in_data[8];
-    int8 rx_len;
+    int8  rx_len;
+    int8  in_data[8];
     
     if (can_getd(rx_id, in_data, rx_len, rxstat))
     {
