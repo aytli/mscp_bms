@@ -356,7 +356,6 @@ int1 check_temperature(void)
             // Too many temperature warning errors
             // PMS will monitor BPS temperature data over CAN bus and control
             // the MPPT relay accordingly
-            return 1;
         }
         else
         {
