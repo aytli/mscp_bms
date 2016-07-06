@@ -19,6 +19,7 @@ typedef struct
     unsigned int16 raw;
     unsigned int16 samples[N_CURRENT_SAMPLES];
     unsigned int16 average;
+    unsigned int8  oc_count;
 } current_t;
 
 // Initializes the hall effect sensor interface
