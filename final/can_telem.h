@@ -28,10 +28,8 @@
     ENTRY(CAN_BPS_TEMPERATURE1   , 0x608,  8, g_bps_temperature_page)    \
     ENTRY(CAN_BPS_TEMPERATURE2   , 0x609,  8, g_bps_temperature_page+8)  \
     ENTRY(CAN_BPS_TEMPERATURE3   , 0x60A,  8, g_bps_temperature_page+16) \
-    ENTRY(CAN_BPS_CURRENT        , 0x60B,  2, g_bps_current_page)        \
-    ENTRY(CAN_BPS_BALANCING      , 0x60C,  4, g_bps_balancing_page)      \
-    ENTRY(CAN_BPS_STATUS         , 0x60D,  1, g_bps_status_page)
-#define N_CAN_ID 14
+    ENTRY(CAN_BPS_CUR_BAL_STAT   , 0x60B,  7, g_bps_cur_bal_stat_page)
+#define N_CAN_ID 12
 
 enum {CAN_ID_TABLE(EXPAND_AS_CAN_ID_ENUM)};
 enum {CAN_ID_TABLE(EXPAND_AS_CAN_LEN_ENUM)};
@@ -49,13 +47,11 @@ enum {CAN_ID_TABLE(EXPAND_AS_CAN_LEN_ENUM)};
 
 // X macro table of telemetry packets
 //        Packet name            ,    ID, Length, Page array
-#define TELEM_ID_TABLE(ENTRY)                                         \
-    ENTRY(TELEM_BPS_VOLTAGE      ,  0x0B, 60, g_bps_voltage_page)     \
-    ENTRY(TELEM_BPS_TEMPERATURE  ,  0x0D, 24, g_bps_temperature_page) \
-    ENTRY(TELEM_BPS_CURRENT      ,  0x11,  2, g_bps_current_page)     \
-    ENTRY(TELEM_BPS_BALANCING    ,  0x13,  4, g_bps_balancing_page)   \
-    ENTRY(TELEM_BPS_STATUS       ,  0x17,  1, g_bps_status_page)
-#define N_TELEM_ID 5
+#define TELEM_ID_TABLE(ENTRY)                                          \
+    ENTRY(TELEM_BPS_VOLTAGE      ,  0x0B, 60, g_bps_voltage_page)      \
+    ENTRY(TELEM_BPS_TEMPERATURE  ,  0x0D, 24, g_bps_temperature_page)  \
+    ENTRY(TELEM_BPS_CUR_BAL_STAT ,  0x11,  7, g_bps_cur_bal_stat_page)
+#define N_TELEM_ID 3
 
 enum {TELEM_ID_TABLE(EXPAND_AS_TELEM_ID_ENUM)};
 enum {TELEM_ID_TABLE(EXPAND_AS_TELEM_LEN_ENUM)};
