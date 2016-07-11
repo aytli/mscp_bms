@@ -623,7 +623,7 @@ void begin_balance_state(void)
         }
     }
     
-    // Do not discharge for safety reasons
+    // Enable/disable the discharge pins on the LTC6804
     output_low(CSBI1);
     ltc6804_write_config(g_discharge1);
     output_high(CSBI1);
