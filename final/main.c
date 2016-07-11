@@ -32,8 +32,8 @@
 #define VOLTAGE_MIN            27500 // 2.75V
 #define TEMP_WARNING              60 // 60°C charge limit
 #define TEMP_CRITICAL             70 // 70°C discharge limit
-#define DISCHARGE_LIMIT_AMPS      20 // Current discharge limit (exiting the pack)
-#define CHARGE_LIMIT_AMPS         10 // Current charge limit (entering the pack)
+#define DISCHARGE_LIMIT_AMPS      80 // Current discharge limit (exiting the pack)
+#define CHARGE_LIMIT_AMPS         40 // Current charge limit (entering the pack)
 #define CURRENT_DISCHARGE_LIMIT CURRENT_ZERO+(CURRENT_SLOPE*DISCHARGE_LIMIT_AMPS)
 #define CURRENT_CHARGE_LIMIT    CURRENT_ZERO-(CURRENT_SLOPE*CHARGE_LIMIT_AMPS)
 
@@ -624,7 +624,7 @@ void begin_balance_state(void)
     }
     
     // Do not discharge for safety reasons
-    /*output_low(CSBI1);
+    output_low(CSBI1);
     ltc6804_write_config(g_discharge1);
     output_high(CSBI1);
     output_low(CSBI2);
@@ -632,7 +632,7 @@ void begin_balance_state(void)
     output_high(CSBI2);
     output_low(CSBI3);
     ltc6804_write_config(g_discharge3);
-    output_high(CSBI3);*/
+    output_high(CSBI3);
     
     g_state = BALANCING;
 }
