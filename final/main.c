@@ -47,7 +47,7 @@
 
 // Misc defines
 #define BALANCE_THRESHOLD        500 // Voltage threshold for balancing to occur (BALANCE_THRESHOLD / 10) mV
-#define N_BAD_SAMPLES             10 // Number of bad data samples required to trip
+#define N_BAD_SAMPLES             30 // Number of bad data samples required to trip
 
 // CAN bus defines
 #define TX_PRI 3
