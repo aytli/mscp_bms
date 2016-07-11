@@ -1,9 +1,7 @@
 #ifndef HALLSENSOR_C
 #define HALLSENSOR_C
 
-// Practice pack calibration
-//#define CURRENT_CHARGE_MAX    2546  //~+40 A
-//#define CURRENT_DISCHARGE_MAX 1031  //~-80 A
+// Hall sensor parameters
 #define CURRENT_ZERO           2055
 #define CURRENT_SLOPE         12.64
 
