@@ -61,7 +61,7 @@ enum {TELEM_ID_TABLE(EXPAND_AS_TELEM_LEN_ENUM)};
 
 // X macro table of miscellaneous CANbus packets
 //        Packet name                  ,    ID
-#define CAN_MISC_TABLE(ENTRY)                \
+#define CAN_MISC_TABLE(ENTRY)                   \
     ENTRY(COMMAND_PMS_DISCONNECT_ARRAY , 0x777) \
     ENTRY(COMMAND_ENABLE_BALANCING     , 0x888) \
     ENTRY(COMMAND_EVDC_DRIVE           , 0x501) \
