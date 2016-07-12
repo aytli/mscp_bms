@@ -32,8 +32,8 @@
 #define VOLTAGE_MIN            27500 // 2.75V
 #define TEMP_WARNING              60 // 60°C charge limit
 #define TEMP_CRITICAL             70 // 70°C discharge limit
-#define DISCHARGE_LIMIT_AMPS      80 // Current discharge limit (exiting the pack)
-#define CHARGE_LIMIT_AMPS         40 // Current charge limit (entering the pack)
+#define DISCHARGE_LIMIT_AMPS      65 // Current discharge limit (exiting the pack)
+#define CHARGE_LIMIT_AMPS         50 // Current charge limit (entering the pack)
 #define CURRENT_DISCHARGE_LIMIT CURRENT_ZERO+(CURRENT_SLOPE*DISCHARGE_LIMIT_AMPS)
 #define CURRENT_CHARGE_LIMIT    CURRENT_ZERO-(CURRENT_SLOPE*CHARGE_LIMIT_AMPS)
 
@@ -227,8 +227,7 @@ void update_voltage_data(void)
     int i;
     for (i = 0 ; i < N_CELLS ; i++)
     {
-        g_bps_voltage_page[2*i]   = (int8)(g_cell[i].voltage >> 8);
-        g_bps_voltage_page[2*i+1] = (int8)(g_cell[i].voltage & 0x00FF);
+        g_bps_voltage_page[i]   = (int8)(g_cell[i].voltage >> 8);
     }
 }
 
@@ -686,6 +685,7 @@ void disconnect_pack_state(void)
 {
     delay_ms(MPPT_DELAY_MS);
     eeprom_write_errors();
+    can_putd(COMMAND_BPS_TRIP_SIGNAL_ID,0,0,TX_PRI,TX_EXT,TX_RTR);
     KILOVAC_OFF;
 }
 
@@ -754,6 +754,7 @@ void main()
     {
         // Something went wrong, do not connect the pack
         eeprom_write_errors();
+        can_putd(COMMAND_BPS_TRIP_SIGNAL_ID,0,0,TX_PRI,TX_EXT,TX_RTR);
         KILOVAC_OFF;
     }
     
