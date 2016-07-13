@@ -528,7 +528,7 @@ void isr_c1rx(void)
             case COMMAND_ENABLE_BALANCING_ID:
                 gb_balance_enable = true;
                 break;
-            case COMMAND_PMS_DISCONNECT_ARRAY_ID:
+            case RESPONSE_PMS_DISCONNECT_ARRAY_ID:
                 gb_pms_response_received = true;
                 break;
             case COMMAND_EVDC_DRIVE_ID:

@@ -60,17 +60,18 @@ enum {TELEM_ID_TABLE(EXPAND_AS_TELEM_LEN_ENUM)};
 #define EXPAND_AS_MISC_ID_ENUM(a,b)  a##_ID  = b,
 
 // X macro table of miscellaneous CANbus packets
-//        Packet name                  ,    ID
-#define CAN_MISC_TABLE(ENTRY)                   \
-    ENTRY(COMMAND_PMS_DISCONNECT_ARRAY , 0x777) \
-    ENTRY(COMMAND_ENABLE_BALANCING     , 0x888) \
-    ENTRY(COMMAND_EVDC_DRIVE           , 0x501) \
-    ENTRY(COMMAND_BPS_TRIP_SIGNAL      , 0x303) \
-    ENTRY(RESPONSE_MPPT1               , 0x771) \
-    ENTRY(RESPONSE_MPPT2               , 0x772) \
-    ENTRY(RESPONSE_MPPT3               , 0x773) \
-    ENTRY(RESPONSE_MPPT4               , 0x774)
-#define N_CAN_COMMAND 8
+//        Packet name                   ,    ID
+#define CAN_MISC_TABLE(ENTRY)                    \
+    ENTRY(COMMAND_PMS_DISCONNECT_ARRAY  , 0x777) \
+    ENTRY(RESPONSE_PMS_DISCONNECT_ARRAY , 0x778) \
+    ENTRY(COMMAND_ENABLE_BALANCING      , 0x888) \
+    ENTRY(COMMAND_EVDC_DRIVE            , 0x501) \
+    ENTRY(COMMAND_BPS_TRIP_SIGNAL       , 0x303) \
+    ENTRY(RESPONSE_MPPT1                , 0x771) \
+    ENTRY(RESPONSE_MPPT2                , 0x772) \
+    ENTRY(RESPONSE_MPPT3                , 0x773) \
+    ENTRY(RESPONSE_MPPT4                , 0x774)
+#define N_CAN_MISC 9
 
 enum {CAN_MISC_TABLE(EXPAND_AS_MISC_ID_ENUM)};
 
