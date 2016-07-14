@@ -24,7 +24,7 @@
     ENTRY(CAN_BPS_TEMPERATURE1   , 0x608,  8, g_bps_temperature_page)    \
     ENTRY(CAN_BPS_TEMPERATURE2   , 0x609,  8, g_bps_temperature_page+8)  \
     ENTRY(CAN_BPS_TEMPERATURE3   , 0x60A,  8, g_bps_temperature_page+16) \
-    ENTRY(CAN_BPS_CUR_BAL_STAT   , 0x60B,  7, g_bps_cur_bal_stat_page)
+    ENTRY(CAN_BPS_CUR_BAL_STAT   , 0x60B,  8, g_bps_cur_bal_stat_page)
 #define N_CAN_ID 8
 
 enum {CAN_ID_TABLE(EXPAND_AS_CAN_ID_ENUM)};
@@ -46,7 +46,7 @@ enum {CAN_ID_TABLE(EXPAND_AS_CAN_LEN_ENUM)};
 #define TELEM_ID_TABLE(ENTRY)                                          \
     ENTRY(TELEM_BPS_VOLTAGE      ,  0x0B, 30, g_bps_voltage_page)      \
     ENTRY(TELEM_BPS_TEMPERATURE  ,  0x0D, 24, g_bps_temperature_page)  \
-    ENTRY(TELEM_BPS_CUR_BAL_STAT ,  0x11,  7, g_bps_cur_bal_stat_page)
+    ENTRY(TELEM_BPS_CUR_BAL_STAT ,  0x11,  8, g_bps_cur_bal_stat_page)
 #define N_TELEM_ID 3
 
 enum {TELEM_ID_TABLE(EXPAND_AS_TELEM_ID_ENUM)};

@@ -244,6 +244,9 @@ void update_cur_bal_stat_data(void)
 {
     // Current, balancing bits, and pack status are stored in the same CAN packet and telemetry page
     
+    // BPMS CAN heartbeat bit
+    static int1 b_heartbeat = 0;
+    
     // Update current data
     g_bps_cur_bal_stat_page[0] = (int8) ((g_current.raw>>8)&0xFF);
     g_bps_cur_bal_stat_page[1] = (int8) (g_current.raw&0xFF);
@@ -259,6 +262,10 @@ void update_cur_bal_stat_data(void)
     
     // Update the pack status
     g_bps_cur_bal_stat_page[6] = gb_connected;
+    
+    // Update CAN heartbeat bit
+    g_bps_cur_bal_stat_page[7] = b_heartbeat;
+    b_heartbeat = !b_heartbeat;
 }
 
 int1 check_voltage(void)
