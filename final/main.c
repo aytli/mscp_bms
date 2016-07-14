@@ -126,7 +126,7 @@ int get_lowest_voltage_cell_index(void)
     int lowest = 0;
     for (i = 0 ; i < N_CELLS ; i++)
     {
-        if (g_cell[i].average_voltage <= g_cell[lowest].average_voltage)
+        if (g_cell[i].voltage <= g_cell[lowest].voltage)
         {
             lowest = i;
         }
@@ -449,7 +449,7 @@ void display_errors(void)
 #int_timer2 level = 4
 void isr_timer2(void)
 {
-    static int i;
+    static int8 i;
     static int1 b_lcd_connected = false;
     
     output_toggle(STATUS);
@@ -481,8 +481,8 @@ void isr_timer2(void)
 #int_timer4 level = 4
 void isr_timer4(void)
 {
-    static int ms = 0;
-    static int i = 0;
+    static int16 ms = 0;
+    static int8  i = 0;
     
     if ((ms >= TELEMETRY_PERIOD_MS) && can_tbe())
     {
@@ -516,9 +516,9 @@ void isr_timer4(void)
 void isr_c1rx(void)
 {
     struct rx_stat rxstat;
-    int32 rx_id;
-    int8  rx_len;
-    int8  in_data[8];
+    int32  rx_id;
+    int8   rx_len;
+    int8   in_data[8];
     
     if (can_getd(rx_id, in_data, rx_len, rxstat))
     {
@@ -638,7 +638,7 @@ void begin_balance_state(void)
 
 void balancing_state(void)
 {
-    static int balance_time_ms = 0;
+    static int16 balance_time_ms = 0;
     
     if (balance_time_ms >= BALANCE_PERIOD_MS)
     {
@@ -658,7 +658,7 @@ void balancing_state(void)
 
 void pms_response_pending_state(void)
 {
-    static int timeout_ms = 0;
+    static int16 timeout_ms = 0;
     
     if (timeout_ms >= PMS_RESPONSE_TIMEOUT_MS)
     {
@@ -692,7 +692,7 @@ void disconnect_pack_state(void)
 // Main
 void main()
 {
-    int i;
+    int8 i;
     
     // Kilovac is initially disabled
     KILOVAC_OFF;
@@ -724,7 +724,7 @@ void main()
     }
     
     // Populate running averages
-    for (i = 0 ; i < N_VOLTAGE_SAMPLES ; i++)
+    /*for (i = 0 ; i < N_VOLTAGE_SAMPLES ; i++)
     {
         ltc6804_read_cell_voltages(g_cell);
         average_voltage();
@@ -740,7 +740,7 @@ void main()
     {
         g_current.raw = hall_sensor_read_data();
         average_current();
-    }
+    }*/
     
     // Perform startup test
     if ((check_voltage() & check_temperature() & check_current()) == true)
