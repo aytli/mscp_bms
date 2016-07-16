@@ -43,8 +43,8 @@
 #define BALANCE_PERIOD_MS       2000 // Balancing discharge period
 #define PMS_RESPONSE_TIMEOUT_MS 1000 // Timeout period for PMS response
 #define BALANCING_TIMEOUT_MS     500 // Timeout period for the balancing command
-#define MPPT_DELAY_MS             10 // MPPT turn off time
-#define BLINKER_WAIT_TIME_MS      50 // Time the blinker needs to process the trip signal
+#define MPPT_DELAY_MS            100 // MPPT turn off time
+#define BLINKER_WAIT_TIME_MS     100 // Time the blinker needs to process the trip signal
 
 // Misc defines
 #define BALANCE_THRESHOLD        500 // Voltage threshold for balancing to occur (BALANCE_THRESHOLD / 10) mV
