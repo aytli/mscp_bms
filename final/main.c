@@ -44,6 +44,7 @@
 #define PMS_RESPONSE_TIMEOUT_MS 1000 // Timeout period for PMS response
 #define BALANCING_TIMEOUT_MS     500 // Timeout period for the balancing command
 #define MPPT_DELAY_MS             10 // MPPT turn off time
+#define BLINKER_WAIT_TIME_MS      50 // Time the blinker needs to process the trip signal
 
 // Misc defines
 #define BALANCE_THRESHOLD        500 // Voltage threshold for balancing to occur (BALANCE_THRESHOLD / 10) mV
@@ -693,6 +694,7 @@ void disconnect_pack_state(void)
     delay_ms(MPPT_DELAY_MS);
     eeprom_write_errors();
     can_putd(COMMAND_BPS_TRIP_SIGNAL_ID,0,0,TX_PRI,TX_EXT,TX_RTR);
+    delay_ms(BLINKER_WAIT_TIME_MS); // Wait a bit for the blinker to process the trip signal
     KILOVAC_OFF;
 }
 
@@ -762,6 +764,7 @@ void main()
         // Something went wrong, do not connect the pack
         eeprom_write_errors();
         can_putd(COMMAND_BPS_TRIP_SIGNAL_ID,0,0,TX_PRI,TX_EXT,TX_RTR);
+        delay_ms(BLINKER_WAIT_TIME_MS); // Wait a bit for the blinker to process the trip signal
         KILOVAC_OFF;
     }
     
