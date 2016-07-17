@@ -143,8 +143,8 @@ void convert_adc_data_to_temps(void)
     float temperature;
     for (i = 0; i < N_ADC_CHANNELS; i++)
     {
-        resistance = THERMISTOR_SERIES * (float)g_temperature[i].raw /
-           (LSBS_PER_VOLT * THERMISTOR_SUPPLY - (float)g_temperature[i].raw);
+        resistance = THERMISTOR_SERIES * (float)g_temperature[i].average /
+           (LSBS_PER_VOLT * THERMISTOR_SUPPLY - (float)g_temperature[i].average);
         temperature = resistance / THERMISTOR_NOMINAL;
         temperature = log(temperature);
         temperature /= B_COEFF;
@@ -228,7 +228,7 @@ void update_voltage_data(void)
     int i;
     for (i = 0 ; i < N_CELLS ; i++)
     {
-        g_bps_voltage_page[i]   = (int8)(g_cell[i].voltage >> 8);
+        g_bps_voltage_page[i]   = (int8)(g_cell[i].average_voltage >> 8);
     }
 }
 
@@ -249,8 +249,8 @@ void update_cur_bal_stat_data(void)
     static int1 b_heartbeat = 0;
     
     // Update current data
-    g_bps_cur_bal_stat_page[0] = (int8) ((g_current.raw>>8)&0xFF);
-    g_bps_cur_bal_stat_page[1] = (int8) (g_current.raw&0xFF);
+    g_bps_cur_bal_stat_page[0] = (int8) ((g_current.average>>8)&0xFF);
+    g_bps_cur_bal_stat_page[1] = (int8) (g_current.average&0xFF);
     
     // Update balancing bits
     int32 discharge = ((((int32)(g_discharge1))<< 0)&0x00000FFF)
@@ -275,7 +275,7 @@ int1 check_voltage(void)
     
     // Read the cell voltages, compute a moving average of each cell voltage
     ltc6804_read_cell_voltages(g_cell);
-    //average_voltage();
+    average_voltage();
     
     for (i = 0 ; i < N_CELLS ; i++)
     {
@@ -326,7 +326,7 @@ int1 check_temperature(void)
     
     // Find highest temperature reading
     ads7952_read_all_channels(g_temperature);
-    //average_temperature();
+    average_temperature();
     convert_adc_data_to_temps();
     
     for (i = 0 ; i < N_ADC_CHANNELS ; i++)
@@ -375,7 +375,7 @@ int1 check_current(void)
 {
     // Read the pack current
     g_current.raw = hall_sensor_read_data();
-    //average_current();
+    average_current();
     
     if (g_current.raw >= CURRENT_DISCHARGE_LIMIT)
     {
@@ -733,7 +733,7 @@ void main()
     }
     
     // Populate running averages
-    /*for (i = 0 ; i < N_VOLTAGE_SAMPLES ; i++)
+    for (i = 0 ; i < N_VOLTAGE_SAMPLES ; i++)
     {
         ltc6804_read_cell_voltages(g_cell);
         average_voltage();
@@ -749,7 +749,7 @@ void main()
     {
         g_current.raw = hall_sensor_read_data();
         average_current();
-    }*/
+    }
     
     // Perform startup test
     if ((check_voltage() & check_temperature() & check_current()) == true)
