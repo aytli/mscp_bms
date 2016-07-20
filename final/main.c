@@ -1,7 +1,9 @@
 // BPMS final code
 // Authors: Andy Li, Stefan Dumitrescu, Mhamad Salih
 // Copyright 2016, McMaster Solar Car Project
-// Monitors voltage and performs charge balancing for 30 cells
+// Monitors voltage and temperature of each cell, the current of the entire pack,
+// and performs passive charge balancing. Designed for a battery pack with 30
+// lithium-ion cells
 
 // Includes
 #include "main.h"
