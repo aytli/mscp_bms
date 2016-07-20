@@ -91,6 +91,7 @@ static int1           gb_pms_response_received;
 static int1           gb_motor_connected;
 static int1           gb_mppt_connected;
 static bps_state_t    g_state;
+static unsigned int8  g_errors[N_ERROR_BYTES];
 
 // Initializes voltage and temperature error counts, current, and other flags
 void main_init(void)
@@ -419,29 +420,27 @@ int1 check_current(void)
 void display_errors(void)
 {
     char str[3];
-    unsigned int8 errors[N_ERROR_BYTES];
-    eeprom_read(errors);
     
     lcd_init();
     
     lcd_set_cursor_position(0,0);
     lcd_write("OV: ");
-    itoa(errors[0],10,str);
+    itoa(g_errors[0],10,str);
     lcd_write(str);
     
     lcd_set_cursor_position(1,0);
     lcd_write("UV: ");
-    itoa(errors[1],10,str);
+    itoa(g_errors[1],10,str);
     lcd_write(str);
     
     lcd_set_cursor_position(2,0);
     lcd_write("OT: ");
-    itoa(errors[2],10,str);
+    itoa(g_errors[2],10,str);
     lcd_write(str);
     
     lcd_set_cursor_position(3,0);
     lcd_write("CURRENT: ");
-    switch(errors[3])
+    switch(g_errors[3])
     {
         case OC_ERROR:
             lcd_write("OC");
@@ -707,6 +706,9 @@ void main()
     
     // Kilovac is initially disabled
     KILOVAC_OFF;
+    
+    // Read back any errors from the eeprom
+    eeprom_read(g_errors);
     
     // Set up and enable timer 2 with a period of HEARTBEAT_PERIOD_MS
     setup_timer2(TMR_INTERNAL|TMR_DIV_BY_256,39*HEARTBEAT_PERIOD_MS);
