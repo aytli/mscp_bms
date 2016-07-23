@@ -7,7 +7,7 @@
 #define TEMPERATURE_NOMINAL 25.0
 #define THERMISTOR_SUPPLY   3.3
 #define THERMISTOR_SERIES   10000.0
-#define B_COEFF             4300.0
+#define B_COEFF             3350.0
 
 #define N_TEMPERATURE_SAMPLES 10
 
