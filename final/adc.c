@@ -121,4 +121,20 @@ void ads7952_read_all_channels(temperature_t * adc)
     }
 }
 
+float thermistor_convert_data(unsigned int16 raw)
+{
+    float resistance;
+    float temperature;
+    
+    resistance = THERMISTOR_SERIES * (float)(raw) / (LSBS_PER_VOLT * THERMISTOR_SUPPLY - (float)(raw));
+    temperature = resistance / THERMISTOR_NOMINAL;
+    temperature = log(temperature);
+    temperature /= B_COEFF;
+    temperature += 1.0 / (TEMPERATURE_NOMINAL + 273.15);
+    temperature = 1.0 / temperature;
+    temperature -= 273.15;
+    
+    return temperature;
+}
+
 #endif

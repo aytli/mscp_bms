@@ -30,8 +30,8 @@
     output_low(KVAC_PIN);
 
 // Protection limits
-#define VOLTAGE_MAX            42000 // 4.20V
-#define VOLTAGE_MIN            27500 // 2.75V
+#define VOLTAGE_MAX            42000 // 4.20V, 1 bit = 0.1 mV
+#define VOLTAGE_MIN            27500 // 2.75V, 1 bit = 0.1 mV
 #define TEMP_WARNING              60 // 60°C charge limit
 #define TEMP_CRITICAL             70 // 70°C discharge limit
 #define DISCHARGE_LIMIT_AMPS      65 // Current discharge limit (exiting the pack)
@@ -142,19 +142,9 @@ int get_lowest_voltage_cell_index(void)
 void convert_adc_data_to_temps(void)
 {
     int i;
-    float resistance;
-    float temperature;
     for (i = 0; i < N_ADC_CHANNELS; i++)
     {
-        resistance = THERMISTOR_SERIES * (float)g_temperature[i].average /
-           (LSBS_PER_VOLT * THERMISTOR_SUPPLY - (float)g_temperature[i].average);
-        temperature = resistance / THERMISTOR_NOMINAL;
-        temperature = log(temperature);
-        temperature /= B_COEFF;
-        temperature += 1.0 / (TEMPERATURE_NOMINAL + 273.15);
-        temperature = 1.0 / temperature;
-        temperature -= 273.15;
-        g_temperature[i].converted = temperature;
+        g_temperature[i].converted = thermistor_convert_data(g_temperature[i].average);
     }
 }
 
@@ -339,11 +329,9 @@ int1 check_temperature(void)
             // Temperature is critical, increment the OT count
             g_temperature[i].ot_count++;
         }
-        else if ((g_temperature[i].converted >= TEMP_WARNING)
-                  && (gb_motor_connected == true) && (gb_mppt_connected == true))
+        else if (g_temperature[i].converted >= TEMP_WARNING)
         {
-            // Temperature is above the warning threshold, motor and MPPT are connected
-            // Increment the temperature warning count
+            // Temperature is above the warning threshold, increment the WT count
             g_temperature[i].wt_count++;
         }
         else
@@ -359,10 +347,14 @@ int1 check_temperature(void)
             eeprom_set_ot_error(i);
             return 0;
         }
-        else if (g_temperature[i].wt_count >= N_BAD_SAMPLES)
+        else if ((g_temperature[i].wt_count >= N_BAD_SAMPLES) && (g_current.raw <= CURRENT_ZERO))
         {
-            // Too many temperature warning errors
-            // PMS monitors BPS temperatures over CAN bus and controls the MPPT relay accordingly
+            // Too many temperature warning errors and the pack is charging
+            // Write OT error to the eeprom and return false
+            // PMS will monitor the battery temperatures and disconnect the array
+            // when the battery temperature is approaching the warning point
+            eeprom_set_ot_error(i);
+            return 0;
         }
         else
         {
