@@ -734,7 +734,6 @@ int8 can_putd(int32 id, int8 *data, int8 len, int8 priority, int1 ext, int1 rtr)
 
     for (i=0; i<len; i++) {
       *txd0=*data;
-      printf("ASDF: %LX\r\n", *(&TXRXBaD0+i));
       txd0++;
       data++;
     }
